@@ -28,9 +28,10 @@ struct vertex {
 	fixed u, v;
 };
 
-int m3d_rasterizer_setup(struct frame_buffer *fbuf);
+int gl_rasterizer_setup(struct frame_buffer *fbuf);
 
-void m3d_draw_line(struct vertex *points, int count);
-void m3d_draw_polygon(struct vertex *points, int count);
+void gl_draw_point(struct vertex *pt);
+void gl_draw_line(struct vertex *points);
+void gl_draw_polygon(struct vertex *points, int count);
 
 #endif	/* GL_RASTERIZER_H_ */

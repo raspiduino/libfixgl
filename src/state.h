@@ -15,6 +15,7 @@ enum {MODE_MODELVIEW, MODE_PROJECTION, MODE_TEXTURE};
 #define MAX_POLY		64
 
 struct state {
+	/* transformation state */
 	unsigned int s;
 	int matrix_mode;
 	fixed mstack[MODE_COUNT][MATRIX_STACK_SIZE][16];
@@ -23,22 +24,28 @@ struct state {
 	fixed mvp_mat[16];
 	int mvp_valid;
 
+	/* texture state */
 	struct tex2d *tex[MAX_TEXTURES];
 	unsigned int btex;		/* texture bound */
 
+	/* rendering state */
 	unsigned int prim;
 	struct frame_buffer fb;
 	fixed clear_r, clear_g, clear_b, clear_a;
 	fixed clear_depth;
+	fixed point_sz;
 
+	/* lighting state */
 	vec3 lpos[MAX_LIGHTS];
 	vec3 ambient, diffuse, specular;
 	fixed shininess;
 
 	vec3 ambient_light;
 
+	/* blending state */
 	unsigned int src_blend, dst_blend;
 
+	/* misc */
 	unsigned int gl_error;
 	int in_beg_end;
 
@@ -48,7 +55,7 @@ struct state {
 	fixed tu, tv;
 	struct vertex v[MAX_POLY];
 	int cur_vert;
-	int prim_elem;
+	int prim_elem;		/* num elements of the current primitive */
 };
 
 #define IS_ENABLED(x)	(state.s & (1 << (x)))

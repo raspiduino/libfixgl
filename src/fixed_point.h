@@ -28,6 +28,7 @@ typedef int fixed;
 extern const fixed fixed_one;
 extern const fixed fixed_half;
 extern const fixed fixed_tenth;
+extern const fixed fixed_255;
 
 #ifdef DBG_USE_FLOAT
 /* ------- debug mode, use floating point -------- */

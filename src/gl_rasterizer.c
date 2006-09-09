@@ -42,7 +42,7 @@ static inline void scan_int(fixed x1, fixed y1, fixed x2, fixed y2, int elem_off
 static inline void scan_fixed(fixed x1, fixed y1, fixed x2, fixed y2, int elem_offset);
 static inline void fill_scanlines(int starty, int endy);
 
-void m3d_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a);
+void gl_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a);
 
 /* ---------- rasterizer state variables and edge tables --------- */
 static struct tex2d *tex;
@@ -57,7 +57,7 @@ static int xres, yres;
 static int *scanline_offset;
 struct edge *left_edge, *right_edge;
 
-int m3d_rasterizer_setup(struct frame_buffer *fbuf) {
+int gl_rasterizer_setup(struct frame_buffer *fbuf) {
 	int i;
 
 	fb = fbuf;
@@ -84,7 +84,56 @@ int m3d_rasterizer_setup(struct frame_buffer *fbuf) {
 }
 
 
-void m3d_draw_line(struct vertex *points, int count) {
+void gl_draw_point(struct vertex *pt) {
+	int cx = fixed_int(fixed_mul(pt->x, fixed_half));
+	int cy = fixed_int(fixed_mul(pt->y, fixed_half));
+
+	int ia = CLAMP(fixed_int(fixed_mul(pt->a, fixed_255)), 0, 255);
+	int ir = CLAMP(fixed_int(fixed_mul(pt->r, fixed_255)), 0, 255);
+	int ig = CLAMP(fixed_int(fixed_mul(pt->g, fixed_255)), 0, 255);
+	int ib = CLAMP(fixed_int(fixed_mul(pt->b, fixed_255)), 0, 255);
+	uint32_t pcol = PACK_COLOR32(ia, ir, ig, ib);
+	
+	/* TODO: implement smooth (circular) points
+	if(IS_ENABLED(GL_POINT_SMOOTH)) {
+	}
+	*/
+
+	int i, j;
+	int sz = MAX(1, fixed_round(state.point_sz));
+		
+	int y = cy - sz / 2;
+	int x = cx - sz / 2;
+	int offs = y * fb->x + x;
+	uint32_t *cptr = fb->color_buffer + offs;
+	uint32_t *zptr = fb->depth_buffer + offs;
+
+	for(j=0; j<sz; j++) {
+		if(y >= fb->y) break;
+		if(y >= 0) {
+			x = cx - sz / 2;
+
+			for(i=0; i<sz; i++) {
+				if(x >= fb->x) break;
+				if(x >= 0) {
+					uint32_t zval = (uint32_t)pt->z;
+					if(!IS_ENABLED(GL_DEPTH_TEST) || zval < *zptr) {
+						*cptr = pcol;
+						if(IS_ENABLED(GL_DEPTH_WRITE)) *zptr = zval;
+					}
+				}
+				x++;
+				cptr++;
+				zptr++;
+			}
+		}
+		zptr += fb->x - sz;
+		y++;
+	}
+}
+
+
+void gl_draw_line(struct vertex *points) {
 	/* TODO */
 }
 
@@ -94,7 +143,7 @@ void m3d_draw_line(struct vertex *points, int count) {
  * interpolation, texture coordinate interpolation and zbuffering
  */
 
-void m3d_draw_polygon(struct vertex *points, int count) {
+void gl_draw_polygon(struct vertex *points, int count) {
 	int i, iy1;
 	int starty = yres;
 	int endy = 0;
@@ -451,7 +500,7 @@ static inline void fill_scanlines(int starty, int endy) {
 
 #ifdef INTERP_NORM
 					if(phong) {
-						m3d_phong_shade(nx, ny, nz, vx, vy, vz, &r, &g, &b, &a);
+						gl_phong_shade(nx, ny, nz, vx, vy, vz, &r, &g, &b, &a);
 						ia = fixed_int(fixed_mul(a, fixed_255));
 						ir = fixed_int(fixed_mul(r, fixed_255));
 						ig = fixed_int(fixed_mul(g, fixed_255));

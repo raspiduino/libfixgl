@@ -3,7 +3,7 @@
 #include "state.h"
 #include "gl.h"
 
-vec3 m3d_shade(vec3 vcs_pos, vec3 vcs_n) {
+vec3 gl_shade(vec3 vcs_pos, vec3 vcs_n) {
 	int i;
 	vec3 col = state.ambient_light;
 	vec3 view;
@@ -40,7 +40,6 @@ vec3 m3d_shade(vec3 vcs_pos, vec3 vcs_n) {
 		/* if the light's w coord is 0, treat it as a light direction (dir-light)
 		 * otherwise, find the light direction by subtracting the light position
 		 * from the surface point.
-		 * XXX: shouldn't we also normalize the directional light vector?
 		 */
 		if(state.lpos[i].w == 0) {
 			ldir.x = -state.lpos[i].x;
@@ -100,7 +99,7 @@ vec3 m3d_shade(vec3 vcs_pos, vec3 vcs_n) {
 	return col;
 }
 
-void m3d_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a) {
+void gl_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a) {
 	vec3 view, normal, col;
 	normal.x = nx;
 	normal.y = ny;
@@ -114,7 +113,7 @@ void m3d_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz,
 
 	vm_normalize(&normal);
 
-	col = m3d_shade(view, normal);
+	col = gl_shade(view, normal);
 	*r = col.x;
 	*g = col.y;
 	*b = col.z;

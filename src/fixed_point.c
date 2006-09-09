@@ -4,6 +4,7 @@
 const fixed fixed_one = fixedi(1);
 const fixed fixed_half = fixedf(0.5);
 const fixed fixed_tenth = fixedf(0.1);
+const fixed fixed_255 = fixedi(255);
 
 #ifndef DBG_USE_FLOAT
 

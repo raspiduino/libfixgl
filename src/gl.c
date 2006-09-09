@@ -110,7 +110,7 @@ void glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
 		return;
 	}
 
-	m3d_rasterizer_setup(&state.fb);
+	gl_rasterizer_setup(&state.fb);
 }
 
 GLuint *fglGetFrameBuffer(void) {
@@ -857,10 +857,27 @@ void glEnd(void) {
 	}
 
 	if(state.cur_vert) {
-		if(state.prim == GL_LINES) {
-			m3d_draw_line(state.v, state.cur_vert - 1);
-		} else {
-			m3d_draw_polygon(state.v, state.cur_vert - 1);
+		int i;
+		struct vertex add_v[2];
+		int vcount = state.cur_vert;
+		
+		switch(state.prim) {
+		case GL_LINE_LOOP:
+			add_v[0] = state.v[vcount - 1];
+			add_v[1] = state.v[0];
+			gl_draw_line(add_v);
+
+		case GL_LINE_STRIP:
+			for(i=0; i<vcount - 1; i++) {
+				gl_draw_line(state.v + i);
+			}
+			break;
+
+		case GL_POLYGON:
+			gl_draw_polygon(state.v, vcount);
+
+		default:
+			break;
 		}
 	}
 
@@ -906,7 +923,7 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 			normal.y = v->ny;
 			normal.z = v->nz;
 
-			col = m3d_shade(pos, normal);
+			col = gl_shade(pos, normal);
 			v->r = col.x;
 			v->g = col.y;
 			v->b = col.z;
@@ -943,10 +960,22 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 	}
 
 	if(!state.cur_vert) {
-		if(state.prim == GL_LINES) {
-			m3d_draw_line(state.v, state.prim_elem);
-		} else {
-			m3d_draw_polygon(state.v, state.prim_elem);
+		switch(state.prim) {
+		case GL_POINTS:
+			gl_draw_point(state.v);
+			break;
+
+		case GL_LINES:
+			gl_draw_line(state.v);
+			break;
+
+		case GL_TRIANGLES:
+		case GL_QUADS:
+			gl_draw_polygon(state.v, state.prim_elem);
+			break;
+
+		default:
+			break;
 		}
 	}
 }
@@ -1005,6 +1034,14 @@ void glTexCoord2x(GLfixed u, GLfixed v) {
 	state.tv = v;
 }
 
+
+void glPointSize(GLfloat sz) {
+	glPointSizex(fixedf(sz));
+}
+
+void glPointSizex(GLfixed sz) {
+	state.point_sz = sz;
+}
 
 GLenum glGetError(void) {
 	unsigned int tmp = state.gl_error;

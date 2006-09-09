@@ -20,6 +20,9 @@ enum {
 	GL_LIGHT_MODEL_LOCAL_VIEWER,	/* set through glLightModel() */
 	GL_LIGHT_MODEL_TWO_SIDE,		/* set through glLightModel() */
 	GL_NORMALIZE,
+	GL_POINT_SMOOTH,
+	GL_LINE_SMOOTH,
+	GL_POLYGON_SMOOTH,
 	GL_PHONG,	/* oh yeah :) */
 	/* -- end of bit fields (acually bit offsets) -- */
 	_STATE_BITS_COUNT,
@@ -43,10 +46,10 @@ enum {
 	GL_LINE_STRIP,
 	GL_LINE_LOOP,
 	GL_TRIANGLES,
-	GL_TRIANGLE_STRIP,
-	GL_TRIANGLE_FAN,
+	GL_TRIANGLE_STRIP,	/* XXX: not implemented */
+	GL_TRIANGLE_FAN,	/* XXX: not implemented */
 	GL_QUADS,
-	GL_QUAD_STRIP,
+	GL_QUAD_STRIP,		/* XXX: not implemented */
 	GL_POLYGON,
 
 	GL_COLOR_BUFFER_BIT = 300,
@@ -199,6 +202,10 @@ void glNormal3x(GLfixed x, GLfixed y, GLfixed z);
 
 void glTexCoord2f(GLfloat u, GLfloat v);
 void glTexCoord2x(GLfixed u, GLfixed v);
+
+
+void glPointSize(GLfloat sz);
+void glPointSizex(GLfixed sz);
 
 GLenum glGetError(void);
 

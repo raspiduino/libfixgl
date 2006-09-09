@@ -7,7 +7,7 @@
  * vcs_pos: the surface position in view coordinates
  * vcs_n: the normal in view coordinates
  */
-vec3 m3d_shade(vec3 vcs_pos, vec3 vcs_n);
-void m3d_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a);
+vec3 gl_shade(vec3 vcs_pos, vec3 vcs_n);
+void gl_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a);
 
 #endif	/* GL_SHADE_H_ */
