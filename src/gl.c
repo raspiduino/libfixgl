@@ -34,8 +34,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define DEG_TO_RADX(a)	(fixed_mul((a), fixedf(3.141592653 / 180.0)))
 #define CLAMP(x, a, b)	((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
 
-static const fixed fixed_255 = fixedi(255);
-
 /* this holds the global OpenGL state */
 struct state state;
 
