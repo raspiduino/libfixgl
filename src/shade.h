@@ -16,9 +16,12 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-
 #ifndef GL_SHADE_H_
 #define GL_SHADE_H_
+
+#ifndef LIBFIXGL_SOURCE
+#error "shade.h should not included from user programs, just include gl.h"
+#endif
 
 #include "vmath.h"
 
