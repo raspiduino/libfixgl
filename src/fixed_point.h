@@ -44,6 +44,7 @@ typedef int fixed;
 #define FRAC_MASK		0xffff
 #endif	/* DECIMAL_BITS */
 
+extern const fixed fixed_zero;
 extern const fixed fixed_one;
 extern const fixed fixed_half;
 extern const fixed fixed_tenth;

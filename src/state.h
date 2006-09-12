@@ -16,9 +16,12 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-
 #ifndef GL_STATE_H_
 #define GL_STATE_H_
+
+#ifndef LIBFIXGL_SOURCE
+#error "state.h should not included from user programs, just include gl.h"
+#endif
 
 #include "gl_rasterizer.h"
 #include "vmath.h"
@@ -32,6 +35,15 @@ enum {MODE_MODELVIEW, MODE_PROJECTION, MODE_TEXTURE};
 #define MODE_COUNT		3
 
 #define MAX_POLY		64
+
+#define GL_ERROR(e)	\
+	if(!state.gl_error) state.gl_error = (e)
+
+#define CHECK_BEG_END()	\
+	if(state.in_beg_end) {\
+		GL_ERROR(GL_INVALID_OPERATION);\
+		return;\
+	}
 
 struct state {
 	/* transformation state */
@@ -71,7 +83,7 @@ struct state {
 	/* vertex state */
 	fixed r, g, b, a;
 	fixed nx, ny, nz;
-	fixed tu, tv;
+	fixed tu, tv, tw;
 	struct vertex v[MAX_POLY];
 	int cur_vert;
 	int prim_elem;		/* num elements of the current primitive */
