@@ -105,8 +105,16 @@ extern const fixed fixed_255;
 #define fixed_mul(n1, n2)	(((n1) >> 8) * ((n2) >> 8))
 #endif	/* DECIMAL_BITS */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 fixed fixed_sin(fixed angle);
 fixed fixed_cos(fixed angle);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
