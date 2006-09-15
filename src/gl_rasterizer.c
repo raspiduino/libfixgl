@@ -62,6 +62,10 @@ static inline void scan_int(fixed x1, fixed y1, fixed x2, fixed y2, int elem_off
 static inline void scan_fixed(fixed x1, fixed y1, fixed x2, fixed y2, int elem_offset);
 static inline void fill_scanlines(int starty, int endy);
 
+#ifdef ENABLE_BLENDING
+static uint32_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, int fb_a);
+#endif	/* ENABLE_BLENDING */
+
 void gl_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a);
 
 /* ---------- rasterizer state variables and edge tables --------- */
@@ -552,73 +556,12 @@ static inline void fill_scanlines(int starty, int endy) {
 				
 #ifdef ENABLE_BLENDING
 					if(IS_ENABLED(GL_BLEND) && !(state.src_blend == GL_ONE && state.dst_blend == GL_ZERO)) {
-						int i;
-						int sr, sg, sb, dr, dg, db;	/* source/dest factors */
-						int fb_r, fb_g, fb_b, fb_a;	/* framebuffer color */
-
-						fb_r = GET_R(*cptr);
-						fb_g = GET_G(*cptr);
-						fb_b = GET_B(*cptr);
-						fb_a = GET_A(*cptr);
-
-						for(i=0; i<2; i++) {
-							int *fr = i ? &dr : &sr;
-							int *fg = i ? &dg : &sg;
-							int *fb = i ? &db : &sb;
-						
-							switch(i ? state.dst_blend : state.src_blend) {
-							case GL_ONE: 
-								*fr = *fg = *fb = 255;
-								break;
-							case GL_ZERO:
-								*fr = *fg = *fb = 0;
-								break;
-							case GL_SRC_COLOR:
-								*fr = ir;
-								*fg = ig;
-								*fb = ib;
-								break;
-							case GL_ONE_MINUS_SRC_COLOR:
-								*fr = 255 - ir;
-								*fg = 255 - ig;
-								*fb = 255 - ib;
-								break;
-							case GL_DST_COLOR:
-								*fr = fb_r;
-								*fg = fb_g;
-								*fb = fb_b;
-								break;
-							case GL_ONE_MINUS_DST_COLOR:
-								*fr = 255 - fb_r;
-								*fg = 255 - fb_g;
-								*fb = 255 - fb_b;
-								break;
-							case GL_SRC_ALPHA:
-								*fr = *fg = *fb = ia;
-								break;
-							case GL_ONE_MINUS_SRC_ALPHA:
-								*fr = *fg = *fb = 255 - ia;
-								break;
-							case GL_DST_ALPHA:
-								*fr = *fg = *fb = fb_a;
-								break;
-							case GL_ONE_MINUS_DST_ALPHA:
-								*fr = *fg = *fb = 255 - fb_a;
-								break;
-							}
-						}
-
-						ir = (ir * sr + fb_r * dr) >> 8;
-						ig = (ig * sg + fb_g * dg) >> 8;
-						ib = (ib * sb + fb_b * db) >> 8;
-
-						ir = CLAMP(ir, 0, 255);
-						ig = CLAMP(ig, 0, 255);
-						ib = CLAMP(ib, 0, 255);
-					}
+						*cptr = blend(ir, ig, ib, ia, GET_R(*cptr), GET_G(*cptr), GET_B(*cptr), GET_A(*cptr));
+					} else
 #endif
-			
-					*cptr = PACK_COLOR32(ia, ir, ig, ib);
+					{
+						*cptr = PACK_COLOR32(ia, ir, ig, ib);
+					}
 
 #ifdef INTERP_Z
 					if(IS_ENABLED(GL_DEPTH_WRITE)) *zptr = zval;
@@ -662,3 +605,70 @@ static inline void fill_scanlines(int starty, int endy) {
 
 	}
 }
+
+void gl_draw_rect(int x1, int y1, int x2, int y2) {
+}
+
+#ifdef ENABLE_BLENDING
+static uint32_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, int fb_a) {
+	int i;
+	int sr, sg, sb, dr, dg, db;	/* source/dest factors */
+
+	for(i=0; i<2; i++) {
+		int *fr = i ? &dr : &sr;
+		int *fg = i ? &dg : &sg;
+		int *fb = i ? &db : &sb;
+	
+		switch(i ? state.dst_blend : state.src_blend) {
+		case GL_ONE: 
+			*fr = *fg = *fb = 255;
+			break;
+		case GL_ZERO:
+			*fr = *fg = *fb = 0;
+			break;
+		case GL_SRC_COLOR:
+			*fr = r;
+			*fg = g;
+			*fb = b;
+			break;
+		case GL_ONE_MINUS_SRC_COLOR:
+			*fr = 255 - r;
+			*fg = 255 - g;
+			*fb = 255 - b;
+			break;
+		case GL_DST_COLOR:
+			*fr = fb_r;
+			*fg = fb_g;
+			*fb = fb_b;
+			break;
+		case GL_ONE_MINUS_DST_COLOR:
+			*fr = 255 - fb_r;
+			*fg = 255 - fb_g;
+			*fb = 255 - fb_b;
+			break;
+		case GL_SRC_ALPHA:
+			*fr = *fg = *fb = a;
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			*fr = *fg = *fb = 255 - a;
+			break;
+		case GL_DST_ALPHA:
+			*fr = *fg = *fb = fb_a;
+			break;
+		case GL_ONE_MINUS_DST_ALPHA:
+			*fr = *fg = *fb = 255 - fb_a;
+			break;
+		}
+	}
+
+	r = (r * sr + fb_r * dr) >> 8;
+	g = (g * sg + fb_g * dg) >> 8;
+	b = (b * sb + fb_b * db) >> 8;
+
+	r = CLAMP(r, 0, 255);
+	g = CLAMP(g, 0, 255);
+	b = CLAMP(b, 0, 255);
+
+	return PACK_COLOR32(a, r, g, b);
+}
+#endif	/* ENABLE_BLENDING */

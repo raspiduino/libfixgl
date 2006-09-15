@@ -80,35 +80,37 @@ vec3 gl_shade(vec3 vcs_pos, vec3 vcs_n) {
 		dif.y = fixed_mul(state.diffuse.y, ndotl);
 		dif.z = fixed_mul(state.diffuse.z, ndotl);
 
-		/* calculate the half vector (useful for calculating specular intensity) */
-		half.x = view.x + ldir.x;
-		half.y = view.y + ldir.y;
-		half.z = view.z + ldir.z;
-		vm_normalize(&half);
+		/* add diffuse to the current color sum */
+		col.x += dif.x;
+		col.y += dif.y;
+		col.z += dif.z;
 
-		/* calculate the specular intensity ([N.H]^S) */
-		ndoth = vm_dot(vcs_n, half);
-		if(ndoth < 0) ndoth = 0;
+		if(state.specular.x > 0 && state.specular.y > 0 && state.specular.z > 0) {
+			float sr, sg, sb;
+			/* calculate the half vector (useful for calculating specular intensity) */
+			half.x = view.x + ldir.x;
+			half.y = view.y + ldir.y;
+			half.z = view.z + ldir.z;
+			vm_normalize(&half);
 
-		pow_res = pow(fixed_float(ndoth), fixed_float(state.shininess));
+			/* calculate the specular intensity ([N.H]^S) */
+			ndoth = vm_dot(vcs_n, half);
+			if(ndoth < 0) ndoth = 0;
 
-		/*
-		spec.x = fixed_mul(state.specular.x, ndoth);
-		spec.y = fixed_mul(state.specular.y, ndoth);
-		spec.z = fixed_mul(state.specular.z, ndoth);
-		*/
-		{
-			float sr = fixed_float(state.specular.x) * pow_res;
-			float sg = fixed_float(state.specular.y) * pow_res;
-			float sb = fixed_float(state.specular.z) * pow_res;
+			pow_res = pow(fixed_float(ndoth), fixed_float(state.shininess));
+
+			sr = fixed_float(state.specular.x) * pow_res;
+			sg = fixed_float(state.specular.y) * pow_res;
+			sb = fixed_float(state.specular.z) * pow_res;
 			spec.x = fixedf(((sr > 1.0f) ? 1.0f : sr));
 			spec.y = fixedf(((sg > 1.0f) ? 1.0f : sg));
 			spec.z = fixedf(((sb > 1.0f) ? 1.0f : sb));
-		}
 
-		col.x += dif.x + spec.x;
-		col.y += dif.y + spec.y;
-		col.z += dif.z + spec.z;
+			/* add specular to the current color sum */
+			col.x += spec.x;
+			col.y += spec.y;
+			col.z += spec.z;
+		}
 	}
 
 	if(col.x > fixed_one) col.x = fixed_one;

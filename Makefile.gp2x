@@ -20,7 +20,7 @@ $(lib): $(obj)
 
 .PHONY: example
 example:
-	cd example; make
+	cd example; make -f Makefile.gp2x
 
 -include $(obj:.o=.d)
 
