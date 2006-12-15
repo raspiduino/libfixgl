@@ -48,7 +48,7 @@ enum {
 	/* -- end of bit fields (acually bit offsets) -- */
 	_STATE_BITS_COUNT,
 
-	GL_PROXY_TEXTURE_1D,
+	GL_PROXY_TEXTURE_1D = 33,
 	GL_PROXY_TEXTURE_2D,
 	GL_PROXY_TEXTURE_3D,
 	GL_PROXY_TEXTURE_CUBE,
