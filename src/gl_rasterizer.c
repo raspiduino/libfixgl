@@ -109,8 +109,8 @@ int gl_rasterizer_setup(struct frame_buffer *fbuf) {
 
 
 void gl_draw_point(struct vertex *pt) {
-	int cx = fixed_int(fixed_mul(pt->x, fixed_half));
-	int cy = fixed_int(fixed_mul(pt->y, fixed_half));
+	int cx = fixed_int(pt->x);/*fixed_mul(pt->x, fixed_half));*/
+	int cy = fixed_int(pt->y);/*fixed_mul(pt->y, fixed_half));*/
 
 	int ia = CLAMP(fixed_int(fixed_mul(pt->a, fixed_255)), 0, 255);
 	int ir = CLAMP(fixed_int(fixed_mul(pt->r, fixed_255)), 0, 255);
@@ -543,8 +543,8 @@ static inline void fill_scanlines(int starty, int endy) {
 							v = fixed_div(v, w);
 						}
 #endif
-						tx = fixed_int(fixed_mul(u, fixedi(tex->x))) & tex->xmask;
-						ty = fixed_int(fixed_mul(v, fixedi(tex->y))) & tex->ymask;
+						tx = fixed_round(fixed_mul(u, fixedi(tex->x))) & tex->xmask;
+						ty = fixed_round(fixed_mul(v, fixedi(tex->y))) & tex->ymask;
 
 						texel = tex->pixels[(ty << tex->xpow) + tx];
 						ir = (ir * GET_R(texel)) >> 8;

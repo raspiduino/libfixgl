@@ -24,6 +24,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "types.h"
 #include "fixed_point.h"
 
+#if defined(_MSC_VER) && !defined(HAVE_INLINE)
+#define inline
+#endif
+
 enum {
 	GL_SMOOTH,
 	GL_LIGHTING,
@@ -205,6 +209,7 @@ void glScalef(GLfloat x, GLfloat y, GLfloat z);
 void glScalex(GLfixed x, GLfixed y, GLfixed z);
 
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat znear, GLfloat zfar);
+void gluLookAt(GLfloat x, GLfloat y, GLfloat z, GLfloat tx, GLfloat ty, GLfloat tz, GLfloat ux, GLfloat uy, GLfloat uz);
 
 /* rendering */
 void glBegin(GLenum primitive);
