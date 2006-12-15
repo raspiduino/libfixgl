@@ -51,7 +51,7 @@ void glBegin(GLenum primitive) {
 	if(!state.mvp_valid) {
 		int mvtop = state.stack_top[MODE_MODELVIEW] - 1;
 		int ptop = state.stack_top[MODE_PROJECTION] - 1;
-		vm_mult_matrix(state.mvp_mat, state.mstack[MODE_PROJECTION][mvtop], state.mstack[MODE_MODELVIEW][ptop]);
+		vm_mult_matrix(state.mvp_mat, state.mstack[MODE_PROJECTION][ptop], state.mstack[MODE_MODELVIEW][mvtop]);
 		state.mvp_valid = 1;
 	}
 
@@ -142,6 +142,10 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 	v->y = fixed_mul(row[0], x) + fixed_mul(row[1], y) + fixed_mul(row[2], z) + row[3]; row += 4;
 	v->z = fixed_mul(row[0], x) + fixed_mul(row[1], y) + fixed_mul(row[2], z) + row[3]; row += 4;
 	v->w = fixed_mul(row[0], x) + fixed_mul(row[1], y) + fixed_mul(row[2], z) + row[3];
+
+	if(state.prim == GL_POINTS && v->z < 0) {
+		return;
+	}
 
 	/* divide with W */
 	if(v->w) {
