@@ -1,10 +1,10 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
 
-This program is free software; you can redistribute it and/or modify
+This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
+the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -12,9 +12,8 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef FIXED_GL_H_
@@ -39,6 +38,10 @@ enum {
 	GL_TEXTURE_2D,
 	GL_TEXTURE_3D,
 	GL_TEXTURE_CUBE,
+	GL_TEXTURE_GEN_S,
+	GL_TEXTURE_GEN_T,
+	GL_TEXTURE_GEN_R,
+	GL_TEXTURE_GEN_Q,
 	GL_DEPTH_TEST,
 	GL_DEPTH_WRITE, /* set through glDepthMask() rather than glEnable/glDisable */
 	GL_BLEND,
@@ -119,7 +122,18 @@ enum {
 	GL_BGRA,
 	
 	GL_UNSIGNED_BYTE = 800,
-	GL_UNSIGNED_SHORT
+	GL_UNSIGNED_SHORT,
+
+	GL_TEXTURE_GEN_MODE = 900,
+	GL_S,
+	GL_T,
+	GL_R,
+	GL_Q,
+	GL_OBJECT_LINEAR,
+	GL_EYE_LINEAR,
+	GL_SPHERE_MAP,
+	GL_OBJECT_PLANE,
+	GL_EYE_PLANE
 };
 
 enum {
@@ -187,6 +201,9 @@ void glDeleteTextures(GLsizei n, const GLuint *tex);
 GLboolean glIsTexture(GLuint tex);
 void glBindTexture(GLenum targ, GLuint tex);
 void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLint border, GLenum fmt, GLenum type, const GLvoid *pixels);
+
+/* texgen state */
+void glTexGeni(GLenum coord, GLenum pname, GLint param);
 
 /* matrix manipulation */
 void glMatrixMode(GLenum mode);

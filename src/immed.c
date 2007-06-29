@@ -1,10 +1,10 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
 
-This program is free software; you can redistribute it and/or modify
+This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
+the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -12,16 +12,18 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #define LIBFIXGL_SOURCE
 
 #include "gl.h"
 #include "state.h"
 #include "shade.h"
 #include "types.h"
+
+static fixed texgen(int coord, struct vertex *v);
 
 static const int prim_vertices[] = {
 	1,		/* GL_POINTS */
@@ -96,7 +98,9 @@ void glEnd(void) {
 void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 	fixed *row;
 	fixed half_width, half_height;
+	vec3 vcs_pos;
 	struct vertex *v = state.v + state.cur_vert;
+	int mvtop = state.stack_top[MODE_MODELVIEW] - 1;
 
 	v->r = state.r;
 	v->g = state.g;
@@ -105,30 +109,27 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 	v->nx = state.nx;
 	v->ny = state.ny;
 	v->nz = state.nz;
-	v->u = state.tu;
-	v->v = state.tv;
+
+	vcs_pos.x = x; vcs_pos.y = y; vcs_pos.z = z;
+	vcs_pos = vm_transform(vcs_pos, state.mstack[MODE_MODELVIEW][mvtop]);
+	v->vx = vcs_pos.x;
+	v->vy = vcs_pos.y;
+	v->vz = vcs_pos.z;
+
+	v->u = IS_ENABLED(GL_TEXTURE_GEN_S) ? texgen(GL_S, v) : state.tu;
+	v->v = IS_ENABLED(GL_TEXTURE_GEN_T) ? texgen(GL_T, v) : state.tv;
 	/*v->w = state.tw;*/
 	
 	/* if lighting is enabled, modify the color */
 	if(IS_ENABLED(GL_LIGHTING)) {
-		vec3 pos, normal, col;
-		int mvtop = state.stack_top[MODE_MODELVIEW] - 1;
+		vec3 normal, col;
 		
-		pos.x = x;
-		pos.y = y;
-		pos.z = z;
-		pos = vm_transform(pos, state.mstack[MODE_MODELVIEW][mvtop]);
-
-		v->vx = pos.x;
-		v->vy = pos.y;
-		v->vz = pos.z;
-
 		if(!(state.s & (1 << GL_PHONG))) {
 			normal.x = v->nx;
 			normal.y = v->ny;
 			normal.z = v->nz;
 
-			col = gl_shade(pos, normal);
+			col = gl_shade(vcs_pos, normal);
 			v->r = col.x;
 			v->g = col.y;
 			v->b = col.z;
@@ -218,4 +219,49 @@ void glTexCoord3x(GLfixed s, GLfixed t, GLfixed r) {
 	state.tu = s;
 	state.tv = t;
 	state.tw = r;
+}
+
+
+static fixed texgen(int coord, struct vertex *v)
+{
+	double sqrt(double);
+	int mode = state.tgen[coord - GL_S].mode;
+	vec3 u, n;
+	static vec3 r;
+	static fixed m;
+	fixed res, ndotu, fixed_2 = fixedi(2);
+	float root, frx, fry, frz;
+
+	switch(mode) {
+	case GL_SPHERE_MAP:
+		if(coord == GL_S) {
+			u.x = 0; u.y = 0; u.z = fixedi(-1);
+			n.x = v->nx;
+			n.y = v->ny;
+			n.z = v->nz;
+
+			ndotu = vm_dot(n, u);
+			r.x = u.x - fixed_mul(fixed_mul(fixed_2, n.x), ndotu);
+			r.y = u.y - fixed_mul(fixed_mul(fixed_2, n.y), ndotu);
+			r.z = u.z - fixed_mul(fixed_mul(fixed_2, n.z), ndotu);
+
+			frx = fixed_float(r.x);
+			fry = fixed_float(r.y);
+			frz = fixed_float(r.z);
+
+			root = sqrt(frx * frx + fry * fry + (frz + 1.0) * (frz + 1.0));
+			m = fixed_mul(fixed_2, fixedf(root));
+
+			res = (m ? fixed_div(r.x, m) : r.x) + fixed_half;
+			return res;
+		} else {
+			return (m ? fixed_div(r.y, m) : r.y) + fixed_half;
+		}
+		break;
+
+	default:
+		break;	/* TODO: implement more modes */
+	}
+
+	return 0;
 }
