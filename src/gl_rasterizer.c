@@ -1,10 +1,10 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
 
-This program is free software; you can redistribute it and/or modify
+This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
+the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -12,10 +12,10 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #define LIBFIXGL_SOURCE
 
 #include <stdio.h>
@@ -543,8 +543,8 @@ static inline void fill_scanlines(int starty, int endy) {
 							v = fixed_div(v, w);
 						}
 #endif
-						tx = fixed_round(fixed_mul(u, fixedi(tex->x))) & tex->xmask;
-						ty = fixed_round(fixed_mul(v, fixedi(tex->y))) & tex->ymask;
+						tx = fixed_int(fixed_mul(u, fixedi(tex->x))) & tex->xmask;
+						ty = fixed_int(fixed_mul(v, fixedi(tex->y))) & tex->ymask;
 
 						texel = tex->pixels[(ty << tex->xpow) + tx];
 						ir = (ir * GET_R(texel)) >> 8;

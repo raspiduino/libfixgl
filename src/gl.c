@@ -1,10 +1,10 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
 
-This program is free software; you can redistribute it and/or modify
+This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
+the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -12,10 +12,10 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #define LIBFIXGL_SOURCE
 
 #include <stdio.h>
@@ -613,6 +613,30 @@ void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLin
 }
 
 
+/* texgen state */
+void glTexGeni(GLenum coord, GLenum pname, GLint param)
+{
+	int i = coord - (int)GL_S;
+
+	CHECK_BEG_END();
+
+	if(coord < GL_S || coord > GL_Q) {
+		GL_ERROR(GL_INVALID_ENUM);
+		return;
+	}
+
+	if(pname == GL_TEXTURE_GEN_MODE) {
+		if(param < GL_OBJECT_LINEAR || param > GL_SPHERE_MAP || (param == GL_SPHERE_MAP && coord > GL_T)) {
+			GL_ERROR(GL_INVALID_ENUM);
+			return;
+		}
+		state.tgen[i].mode = param;
+	} else {
+		GL_ERROR(GL_INVALID_ENUM);
+	}
+}
+
+
 /* matrix manipulation */
 void glMatrixMode(GLenum mode) {
 	unsigned int mmode = mode - GL_MODELVIEW;
@@ -698,7 +722,6 @@ void glPushMatrix(void) {
 
 	memcpy(state.mstack[mmode][top + 1], state.mstack[mmode][top], 16 * sizeof(fixed));
 	state.stack_top[mmode]++;
-	state.mvp_valid = 0;
 }
 
 void glPopMatrix(void) {
