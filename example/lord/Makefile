@@ -1,6 +1,6 @@
 obj = example.o lord.o image_png.o
 bin = example
-lib = ../libGL.a
+lib = ../../libGL.a
 
 SDL_CONFIG = sdl-config
 
@@ -8,7 +8,7 @@ SDL_CONFIG = sdl-config
 opt = -O3 -ffast-math
 
 CC = gcc
-CFLAGS = -std=gnu89 -pedantic -Wall $(opt) $(dbg) -I../src `$(SDL_CONFIG) --cflags` -I/usr/local/devkitPro/devkitGP2X/include/libpng12
+CFLAGS = -std=gnu89 -pedantic -Wall $(opt) $(dbg) -I../../src `$(SDL_CONFIG) --cflags` -I/usr/local/devkitPro/devkitGP2X/include/libpng12
 LDFLAGS = -lm `$(SDL_CONFIG) --libs` -lpng -lz -lpthread
 
 $(bin): $(obj) $(lib)
