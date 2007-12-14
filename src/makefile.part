@@ -1,7 +1,0 @@
-obj += \
-	src/gl.o\
-	src/immed.o\
-	src/shade.o\
-	src/vmath.o\
-	src/gl_rasterizer.o\
-	src/fixed_point.o
