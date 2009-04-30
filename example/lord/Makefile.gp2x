@@ -1,14 +1,17 @@
 obj = example.o lord.o image_png.o
-bin = example
+bin = example.gp2x
 lib = ../../libGL_gp2x.a
 
-SDL_CONFIG = arm-linux-sdl-config
+SDL_CONFIG = /usr/local/open2x/bin/sdl-config
 
 #dbg = -g
 opt = -mcpu=arm920t -O3 -ffast-math -fomit-frame-pointer
+inc = -I../../src `$(SDL_CONFIG) --cflags` -I/usr/local/open2x/include\
+	  -I/usr/local/open2x/include/libpng12
 
-CC = arm-linux-gcc
-CFLAGS = -std=gnu89 -pedantic -Wall $(opt) $(dbg) -I../../src `$(SDL_CONFIG) --cflags` -I/usr/local/devkitPro/devkitGP2X/include/libpng12
+
+CC = arm-open2x-linux-gcc
+CFLAGS = -std=gnu89 -pedantic -Wall $(opt) $(dbg) $(inc) -DGP2X
 LDFLAGS = -lm -static `$(SDL_CONFIG) --libs` -lpng -lz -lpthread
 
 $(bin): $(obj) $(lib)

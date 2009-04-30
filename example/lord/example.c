@@ -93,6 +93,48 @@ int main(int argc, char **argv) {
 					break;
 				}
 			}
+#ifdef GP2X
+			if(event.type == SDL_JOYBUTTONDOWN) {
+				if(event.jbutton.button == GP2X_VK_FX) {
+					break;
+				}
+
+				switch(event.jbutton.button) {
+				case GP2X_VK_LEFT:
+					yrot -= 5;
+					break;
+
+				case GP2X_VK_RIGHT:
+					yrot += 5;
+					break;
+
+				case GP2X_VK_UP:
+					xrot -= 5;
+					break;
+
+				case GP2X_VK_DOWN:
+					xrot += 5;
+					break;
+
+				case GP2X_VK_FB:
+					model = (model + 1) % 2;
+					break;
+
+				case GP2X_VK_FA:
+					auto_rot = !auto_rot;
+					break;
+
+				case GP2X_VK_FR:
+					phong_shading = !phong_shading;
+					if(phong_shading) {
+						glEnable(GL_PHONG);
+					} else {
+						glDisable(GL_PHONG);
+					}
+					break;
+				}
+			}
+#endif	/* GP2X */
 		} else {
 			update_gfx();
 		}
@@ -105,7 +147,13 @@ int main(int argc, char **argv) {
 
 int init(void) {
 	float lpos[] = {-500, 500, 500, 1.0};
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER
+#ifdef GP2X
+			| SDL_INIT_JOYSTICK);
+	SDL_JoystickOpen(0);
+#else
+			);
+#endif
 	if(!(fbsurf = SDL_SetVideoMode(xsz, ysz, 32, SDL_SWSURFACE))) {
 		fputs("SDL init failed\n", stderr);
 		return -1;
