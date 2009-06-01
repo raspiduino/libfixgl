@@ -44,6 +44,7 @@ enum {
 	GL_TEXTURE_GEN_Q,
 	GL_DEPTH_TEST,
 	GL_DEPTH_WRITE, /* set through glDepthMask() rather than glEnable/glDisable */
+	GL_CULL_FACE,
 	GL_BLEND,
 	GL_LIGHT_MODEL_LOCAL_VIEWER,	/* set through glLightModel() */
 	GL_LIGHT_MODEL_TWO_SIDE,		/* set through glLightModel() */
@@ -55,7 +56,10 @@ enum {
 	/* -- end of bit fields (acually bit offsets) -- */
 	_STATE_BITS_COUNT,
 
-	GL_PROXY_TEXTURE_1D = 33,
+	GL_CW = 35,
+	GL_CCW,
+
+	GL_PROXY_TEXTURE_1D = 40,
 	GL_PROXY_TEXTURE_2D,
 	GL_PROXY_TEXTURE_3D,
 	GL_PROXY_TEXTURE_CUBE,
@@ -79,11 +83,6 @@ enum {
 	GL_QUADS,
 	GL_QUAD_STRIP,		/* XXX: not implemented */
 	GL_POLYGON,
-
-	GL_COLOR_BUFFER_BIT = 300,
-	GL_DEPTH_BUFFER_BIT,
-	GL_ACCUM_BUFFER_BIT,
-	GL_STENCIL_BUFFER_BIT,
 
 	GL_POSITION = 400,
 	GL_AMBIENT,
@@ -123,6 +122,7 @@ enum {
 	
 	GL_UNSIGNED_BYTE = 800,
 	GL_UNSIGNED_SHORT,
+	GL_UNSIGNED_SHORT_5_6_5,
 
 	GL_TEXTURE_GEN_MODE = 900,
 	GL_S,
@@ -133,7 +133,25 @@ enum {
 	GL_EYE_LINEAR,
 	GL_SPHERE_MAP,
 	GL_OBJECT_PLANE,
-	GL_EYE_PLANE
+	GL_EYE_PLANE,
+
+	GL_TEXTURE_WRAP_S = 950,
+	GL_TEXTURE_WRAP_T,
+	GL_CLAMP,
+	GL_REPEAT,
+	GL_TEXTURE_MIN_FILTER,
+	GL_TEXTURE_MAG_FILTER,
+	GL_NEAREST,
+	GL_LINEAR,
+	GL_LINEAR_MIPMAP_LINEAR,
+
+	GL_VENDOR = 2000,
+	GL_RENDERER,
+	GL_EXTENSIONS,
+	GL_VIEWPORT,
+	GL_MODELVIEW_MATRIX,
+	GL_PROJECTION_MATRIX,
+	GL_TEXTURE_MATRIX
 };
 
 enum {
@@ -147,13 +165,37 @@ enum {
 	GL_TABLE_TOO_LARGE
 };
 
+enum {
+	GL_CURRENT_BIT			= 0x00001,
+	GL_POINT_BIT			= 0x00002,
+	GL_LINE_BIT				= 0x00004,
+	GL_POLYGON_BIT			= 0x00008,
+	GL_POLYGON_STIPPLE_BIT	= 0x00010,
+	GL_PIXEL_MODE_BIT		= 0x00020,
+	GL_LIGHTING_BIT			= 0x00040,
+	GL_FOG_BIT				= 0x00080,
+	GL_DEPTH_BUFFER_BIT		= 0x00100,
+	GL_ACCUM_BUFFER_BIT		= 0x00200,
+	GL_STENCIL_BUFFER_BIT	= 0x00400,
+	GL_VIEWPORT_BIT			= 0x00800,
+	GL_TRANSFORM_BIT		= 0x01000,
+	GL_ENABLE_BIT			= 0x02000,
+	GL_COLOR_BUFFER_BIT		= 0x04000,
+	GL_HINT_BIT				= 0x08000,
+	GL_EVAL_BIT				= 0x10000,
+	GL_LIST_BIT				= 0x20000,
+	GL_TEXTURE_BIT			= 0x40000,
+	GL_SCISSOR_BIT			= 0x80000,
+	GL_ALL_ATTRIB_BITS		= 0xfffff
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif	/* __cplusplus */
 
 void fglCreateContext(void);
 void fglDestroyContext(void);
-GLuint *fglGetFrameBuffer(void);
+void *fglGetFrameBuffer(void);
 
 void glViewport(GLint x, GLint y, GLsizei w, GLsizei h);
 
@@ -163,6 +205,19 @@ void glClearColorx(GLfixed r, GLfixed g, GLfixed b, GLfixed a);
 void glClearDepth(GLclampd d);
 void glClearDepthx(GLfixed d);
 void glClear(GLbitfield what);
+
+/* get */
+const GLubyte *glGetString(GLenum name);
+
+void glGetBooleanv(GLenum name, GLboolean *res);
+void glGetDoublev(GLenum name, GLdouble *res);
+void glGetFloatv(GLenum name, GLfloat *res);
+void glGetFixedv(GLenum name, GLfixed *res);
+void glGetIntegerv(GLenum name, GLint *res);
+
+/* push/pop attrib */
+void glPushAttrib(GLbitfield mask);
+void glPopAttrib(void);
 
 /* general state */
 void glEnable(GLenum what);
@@ -176,6 +231,8 @@ void glLightModelfv(GLenum pname, GLfloat *val);
 
 void glBlendFunc(GLenum src, GLenum dst);
 void glShadeModel(GLenum mode);
+
+void glFrontFace(GLenum mode);
 
 /* zbuffer state */
 void glDepthMask(GLboolean boolval);
@@ -200,7 +257,14 @@ void glGenTextures(GLsizei n, GLuint *tex);
 void glDeleteTextures(GLsizei n, const GLuint *tex);
 GLboolean glIsTexture(GLuint tex);
 void glBindTexture(GLenum targ, GLuint tex);
-void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLint border, GLenum fmt, GLenum type, const GLvoid *pixels);
+void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h,
+		GLint border, GLenum fmt, GLenum type, const GLvoid *pixels);
+
+void glTexParameteri(GLenum targ, GLenum pname, GLint param);
+void glTexParameterf(GLenum targ, GLenum pname, GLfloat param);
+
+void gluBuild2DMipmaps(GLenum targ, GLint ifmt, GLsizei w, GLsizei h, GLenum fmt,
+		GLenum type, const void *pixels);
 
 /* texgen state */
 void glTexGeni(GLenum coord, GLenum pname, GLint param);
@@ -225,8 +289,12 @@ void glRotateEulerx(GLfixed x, GLfixed y, GLfixed z);
 void glScalef(GLfloat x, GLfloat y, GLfloat z);
 void glScalex(GLfixed x, GLfixed y, GLfixed z);
 
+void glOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat znear, GLfloat zfar);
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat znear, GLfloat zfar);
 void gluLookAt(GLfloat x, GLfloat y, GLfloat z, GLfloat tx, GLfloat ty, GLfloat tz, GLfloat ux, GLfloat uy, GLfloat uz);
+
+GLint gluUnProject(GLdouble winx, GLdouble winy, GLdouble winz, const GLdouble *model,
+		const GLdouble *proj, const GLint *view, GLdouble *objx, GLdouble *objy, GLdouble *objz);
 
 /* rendering */
 void glBegin(GLenum primitive);
@@ -377,13 +445,15 @@ static inline void glTexCoord4iv(const GLint *v)	{ glTexCoord4i(v[0], v[1], v[2]
 static inline void glTexCoord4sv(const GLshort *v)	{ glTexCoord4s(v[0], v[1], v[2], v[3]); }
 
 
-
 void glPointSize(GLfloat sz);
 void glPointSizex(GLfixed sz);
 
 GLenum glGetError(void);
 void glFlush(void);
 void glFinish(void);
+
+/* pixel operations */
+void glReadPixels(GLint x, GLint y, GLsizei xsz, GLsizei ysz, GLenum fmt, GLenum type, GLvoid *pixels);
 
 #ifdef __cplusplus
 }

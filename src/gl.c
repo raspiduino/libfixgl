@@ -1,6 +1,6 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006-2009 John Tsiombikas <nuclear@siggraph.org>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "vmath.h"
 #include "state.h"
 #include "shade.h"
+#include "attr.h"
+#include "pixmap.h"
 
 #define DEG_TO_RADF(a) 	(((float)a) * (3.1415926535897932 / 180.0))
 #define DEG_TO_RADX(a)	(fixed_mul((a), fixedf(3.141592653 / 180.0)))
@@ -39,15 +41,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct state state;
 
 static int which_pow2(int n);
+static int glpix_to_ras(int type);
 
 void fglCreateContext(void) {
 	int i;
 
 	state.s = 0;
 	state.in_beg_end = 0;
+
+	glFrontFace(GL_CCW);
 	
 	glEnable(GL_SMOOTH);
-	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_DEPTH_WRITE);
 	
 	for(i=0; i<MODE_COUNT; i++) {
@@ -57,7 +61,6 @@ void fglCreateContext(void) {
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(45.0, 1.333333, 1.0, 1000.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -91,7 +94,8 @@ void fglCreateContext(void) {
 
 	state.gl_error = 0;
 
-	state.fb.color_buffer = state.fb.depth_buffer = 0;
+	state.fb.color_buffer = 0;
+	state.fb.depth_buffer = 0;
 }
 
 void fglDestroyContext(void) {
@@ -122,7 +126,7 @@ void glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
 	gl_rasterizer_setup(&state.fb);
 }
 
-GLuint *fglGetFrameBuffer(void) {
+void *fglGetFrameBuffer(void) {
 	return state.fb.color_buffer;
 }
 
@@ -155,8 +159,9 @@ void glClearDepthx(GLfixed d) {
 
 void glClear(GLbitfield what) {
 	int i, sz;
-	uint32_t *cptr, *zptr, col, zval;
-	fixed r, g, b, a;
+	uint16_t *cptr;
+	uint32_t *zptr, col, zval;
+	fixed r, g, b;
 	GLbitfield all;
 
 	all =	GL_COLOR_BUFFER_BIT |
@@ -176,8 +181,7 @@ void glClear(GLbitfield what) {
 	r = fixed_int(fixed_mul(state.clear_r, fixed_255));
 	g = fixed_int(fixed_mul(state.clear_g, fixed_255));
 	b = fixed_int(fixed_mul(state.clear_b, fixed_255));
-	a = fixed_int(fixed_mul(state.clear_a, fixed_255));
-	col = PACK_COLOR32(a, r, g, b);
+	col = PACK_COLOR16(r, g, b);
 	zval = state.clear_depth;
 	
 	for(i=0; i<sz; i++) {
@@ -191,6 +195,167 @@ void glClear(GLbitfield what) {
 	}
 }
 
+/* get */
+const GLubyte *glGetString(GLenum name)
+{
+	switch(name) {
+	case GL_VENDOR:
+		return (GLubyte*)"Ioannis Tsiombikas";
+	case GL_RENDERER:
+		return (GLubyte*)"libfixgl";
+	case GL_EXTENSIONS:
+		return (GLubyte*)"GL_FIX_fixed_point";
+	default:
+		break;
+	}
+	return 0;
+}
+
+void glGetBooleanv(GLenum name, GLboolean *res)
+{
+	switch(name) {
+	default:
+		break;
+	}
+}
+
+void glGetDoublev(GLenum name, GLdouble *res)
+{
+	switch(name) {
+	case GL_VIEWPORT:
+		res[0] = res[1] = 0.0;
+		res[2] = (double)state.fb.x;
+		res[3] = (double)state.fb.y;
+		break;
+
+	case GL_MODELVIEW_MATRIX:
+	case GL_PROJECTION_MATRIX:
+	case GL_TEXTURE_MATRIX:
+		{
+			int i;
+			fixed xmat[16];
+			glGetFixedv(name, xmat);
+
+			for(i=0; i<16; i++) {
+				res[i] = (GLdouble)fixed_float(xmat[i]);
+			}
+		}
+		break;
+
+
+	default:
+		break;
+	}
+}
+
+void glGetFloatv(GLenum name, GLfloat *res)
+{
+	switch(name) {
+	case GL_VIEWPORT:
+		res[0] = res[1] = 0.0f;
+		res[2] = (float)state.fb.x;
+		res[3] = (float)state.fb.y;
+		break;
+
+	case GL_MODELVIEW_MATRIX:
+	case GL_PROJECTION_MATRIX:
+	case GL_TEXTURE_MATRIX:
+		{
+			int i;
+			fixed xmat[16];
+			glGetFixedv(name, xmat);
+
+			for(i=0; i<16; i++) {
+				res[i] = fixed_float(xmat[i]);
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+void glGetFixedv(GLenum name, GLfixed *res)
+{
+	switch(name) {
+	case GL_VIEWPORT:
+		res[0] = res[1] = 0;
+		res[2] = fixedi(state.fb.x);
+		res[3] = fixedi(state.fb.y);
+		break;
+
+	case GL_MODELVIEW_MATRIX:
+	case GL_PROJECTION_MATRIX:
+	case GL_TEXTURE_MATRIX:
+		{
+			int mmode = name - GL_MODELVIEW_MATRIX;
+			int top = state.stack_top[mmode] - 1;
+			memcpy(res, state.mstack[mmode][top], 16 * sizeof *res);
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+void glGetIntegerv(GLenum name, GLint *res)
+{
+	switch(name) {
+	case GL_VIEWPORT:
+		res[0] = res[1] = 0;
+		res[2] = state.fb.x;
+		res[3] = state.fb.y;
+		break;
+
+	default:
+		break;
+	}
+}
+
+static int count_bits(unsigned int num)
+{
+	int i, bits = 0;
+	for(i=0; i<sizeof num * CHAR_BIT; i++) {
+		if(num & 1) {
+			bits++;
+		}
+		num >>= 1;
+	}
+	return bits;
+}
+
+/* push/pop attrib */
+void glPushAttrib(GLbitfield mask)
+{
+	struct attrib_block *attr;
+
+	CHECK_BEG_END();
+
+	if(!(attr = alloc_attrib_block(count_bits(mask)))) {
+		GL_ERROR(GL_STACK_OVERFLOW);
+		return;
+	}
+
+	if(mask & GL_ENABLE_BIT) {
+		add_attrib(attr, &state.s, sizeof state.s);
+	}
+
+	if(push_attrib(attr) == -1) {
+		free_attrib_block(attr);
+		GL_ERROR(GL_STACK_OVERFLOW);
+	}
+}
+
+void glPopAttrib(void)
+{
+	CHECK_BEG_END();
+
+	if(pop_attrib() == -1) {
+		GL_ERROR(GL_STACK_UNDERFLOW);
+	}
+}
 
 /* general state */
 void glEnable(GLenum what) {
@@ -328,6 +493,11 @@ void glShadeModel(GLenum mode) {
 		GL_ERROR(GL_INVALID_ENUM);
 		break;
 	}
+}
+
+void glFrontFace(GLenum mode)
+{
+	state.front_face = mode;
 }
 
 /* zbuffer state */
@@ -581,7 +751,8 @@ void glBindTexture(GLenum targ, GLuint tex) {
  * - no mipmaps
  * TODO: handle various pixel formats correctly (not internal).
  */
-void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLint border, GLenum fmt, GLenum type, const GLvoid *pixels) {
+void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLint border,
+		GLenum fmt, GLenum type, const GLvoid *pixels) {
 	struct tex2d *tex;
 	int xp2;
 
@@ -595,16 +766,38 @@ void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLin
 	}
 	CHECK_BEG_END();
 
+	if(lvl != 0) {	/* XXX ignore mipmaps at the moment */
+		return;
+	}
+
 	if(!state.btex || (xp2 = which_pow2(w)) == -1) {
 		return;
 	}
 	tex = state.tex[state.btex];
 	
 	tex->type = targ;
-	tex->pixels = malloc(w * h * 4);
+	tex->pixels = malloc(w * h * sizeof *tex->pixels);
+
 	if(pixels) {
-		memcpy(tex->pixels, pixels, w * h * 4);
+		struct ras_pixmap src, dst;
+		ras_init_pixmap(&src);
+		ras_init_pixmap(&dst);
+
+		src.width = w;
+		src.height = h;
+		ras_set_pixmap_fmt(&src, glpix_to_ras(type));
+		src.pixels = (void*)pixels;
+		src.bytes_per_line = src.width * src.bytes_per_pixel;
+
+		dst.width = w;
+		dst.height = h;
+		ras_set_pixmap_fmt(&dst, RAS_RGBA32);
+		dst.pixels = tex->pixels;
+		dst.bytes_per_line = dst.width * dst.bytes_per_pixel;
+
+		ras_blit(&dst, &src, 0, 0, RAS_FULL_SIZE, RAS_FULL_SIZE);
 	}
+
 	tex->x = w;
 	tex->y = h;
 	tex->xpow = xp2;
@@ -612,6 +805,21 @@ void glTexImage2D(GLenum targ, GLint lvl, GLint ifmt, GLsizei w, GLsizei h, GLin
 	tex->ymask = h - 1;
 }
 
+void glTexParameteri(GLenum targ, GLenum pname, GLint param)
+{
+	/* TODO implement */
+}
+
+void glTexParameterf(GLenum targ, GLenum pname, GLfloat param)
+{
+	/* TODO implement */
+}
+
+void gluBuild2DMipmaps(GLenum targ, GLint ifmt, GLsizei w, GLsizei h, GLenum fmt, GLenum type, const void *pixels)
+{
+	/* TODO implement mipmaps */
+	glTexImage2D(targ, 0, ifmt, w, h, 0, fmt, type, pixels);
+}
 
 /* texgen state */
 void glTexGeni(GLenum coord, GLenum pname, GLint param)
@@ -833,6 +1041,25 @@ void glScalex(GLfixed x, GLfixed y, GLfixed z) {
 	glMultMatrixx(smat);
 }
 
+void glOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat znear, GLfloat zfar)
+{
+	float tx, ty, tz;
+	float m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+
+	tx = -(right + left) / (right - left);
+	ty = -(top + bottom) / (top - bottom);
+	tz = -(zfar + znear) / (zfar - znear);
+
+	m[M(0, 0)] = 2.0f / (right - left);
+	m[M(1, 1)] = 2.0f / (top - bottom);
+	m[M(2, 2)] = -2.0f / (zfar - znear);
+	m[M(0, 3)] = tx;
+	m[M(1, 3)] = ty;
+	m[M(2, 3)] = tz;
+
+	glMultMatrixf(m);
+}
+
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat znear, GLfloat zfar) {
 	float m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 	float f, dz;
@@ -889,6 +1116,13 @@ void gluLookAt(GLfloat x, GLfloat y, GLfloat z, GLfloat tx, GLfloat ty, GLfloat 
 }
 
 
+GLint gluUnProject(GLdouble winx, GLdouble winy, GLdouble winz, const GLdouble *model,
+		const GLdouble *proj, const GLint *view, GLdouble *objx, GLdouble *objy, GLdouble *objz)
+{
+	return 0;	/* TODO */
+}
+
+
 void glPointSize(GLfloat sz) {
 	glPointSizex(fixedf(sz));
 }
@@ -912,6 +1146,28 @@ GLenum glGetError(void) {
 void glFlush(void) {}
 void glFinish(void) {}
 
+void glReadPixels(GLint x, GLint y, GLsizei xsz, GLsizei ysz, GLenum fmt, GLenum type, GLvoid *pixels)
+{
+	struct ras_pixmap src, dst;
+	ras_init_pixmap(&src);
+	ras_init_pixmap(&dst);
+
+	src.width = state.fb.x;
+	src.height = state.fb.y;
+	ras_set_pixmap_fmt(&src, RAS_RGB16);
+	src.pixels = fglGetFrameBuffer();
+	src.bytes_per_line = src.width * src.bytes_per_pixel;
+
+	dst.width = xsz;
+	dst.height = ysz;
+	ras_set_pixmap_fmt(&dst, glpix_to_ras(type));
+	dst.pixels = pixels;
+	dst.bytes_per_line = xsz * dst.bytes_per_pixel;
+
+	ras_blit(&dst, &src, x, y, xsz, ysz);
+}
+
+
 static int which_pow2(int x) {
 	int p = 0;
 	int tmpx = 1;
@@ -922,4 +1178,19 @@ static int which_pow2(int x) {
 	}
 
 	return x != tmpx ? 0 : p;
+}
+
+static int glpix_to_ras(int type)
+{
+	switch(type) {
+	case GL_UNSIGNED_BYTE:
+		return RAS_RGBA32;
+
+	case GL_UNSIGNED_SHORT_5_6_5:
+		return RAS_RGB16;
+
+	default:
+		break;
+	}
+	return 0;
 }

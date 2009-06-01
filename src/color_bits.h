@@ -107,14 +107,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define PACK_COLOR24(r,g,b)		PACK_COLOR32(0xff,r,g,b)
 
 #define PACK_COLOR16(r,g,b) \
-	(((uint16_t)(r) << RED_SHIFT16) & RED_MASK16) | \
-	(((uint16_t)(g) << GREEN_SHIFT16) & GREEN_MASK16) | \
-	(((uint16_t)(b) << BLUE_SHIFT16) & BLUE_MASK16)
+	(((uint16_t)((r) >> 3) << RED_SHIFT16) & RED_MASK16) | \
+	(((uint16_t)((g) >> 2) << GREEN_SHIFT16) & GREEN_MASK16) | \
+	(((uint16_t)((b) >> 3) << BLUE_SHIFT16) & BLUE_MASK16)
 
 #define PACK_COLOR15(r,g,b) \
-	(((uint16_t)(r) << RED_SHIFT15) & RED_MASK15) | \
-	(((uint16_t)(g) << GREEN_SHIFT15) & GREEN_MASK15) | \
-	(((uint16_t)(b) << BLUE_SHIFT15) & BLUE_MASK15)
+	(((uint16_t)((r) >> 3) << RED_SHIFT15) & RED_MASK15) | \
+	(((uint16_t)((g) >> 3) << GREEN_SHIFT15) & GREEN_MASK15) | \
+	(((uint16_t)((b) >> 3) << BLUE_SHIFT15) & BLUE_MASK15)
 
 
 #endif	/* _COLOR_BITS_H_ */
