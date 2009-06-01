@@ -1,6 +1,6 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006-2009 John Tsiombikas <nuclear@siggraph.org>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -39,7 +39,8 @@ static const int prim_vertices[] = {
 };
 
 
-void glBegin(GLenum primitive) {
+void glBegin(GLenum primitive)
+{
 	if(primitive < GL_POINTS || primitive > GL_POLYGON) {
 		state.gl_error = GL_INVALID_ENUM;
 		return;
@@ -60,7 +61,8 @@ void glBegin(GLenum primitive) {
 	state.in_beg_end = 1;
 }
 
-void glEnd(void) {
+void glEnd(void)
+{
 	if(!state.in_beg_end) {
 		state.gl_error = GL_INVALID_OPERATION;
 		return;
@@ -95,7 +97,8 @@ void glEnd(void) {
 }
 
 
-void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
+void glVertex3x(GLfixed x, GLfixed y, GLfixed z)
+{
 	fixed *row;
 	fixed half_width, half_height;
 	vec3 vcs_pos;
@@ -163,10 +166,8 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 	v->x = fixed_mul(half_width, v->x + fixed_one);
 	v->y = fixed_mul(half_height, fixed_one - v->y);
 
-	if(state.prim_elem != -1) {
-		state.cur_vert = (state.cur_vert + 1) % state.prim_elem;
-	} else {
-		state.cur_vert++;
+	if(++state.cur_vert == state.prim_elem) {
+		state.cur_vert = 0;
 	}
 
 	if(!state.cur_vert) {
@@ -190,14 +191,16 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z) {
 	}
 }
 
-void glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a) {
+void glColor4x(GLfixed r, GLfixed g, GLfixed b, GLfixed a)
+{
 	state.r = r;
 	state.g = g;
 	state.b = b;
 	state.a = a;
 }
 
-void glNormal3x(GLfixed x, GLfixed y, GLfixed z) {
+void glNormal3x(GLfixed x, GLfixed y, GLfixed z)
+{
 	vec3 normal;
 
 	int mvtop = state.stack_top[MODE_MODELVIEW] - 1;
@@ -215,10 +218,14 @@ void glNormal3x(GLfixed x, GLfixed y, GLfixed z) {
 	state.nz = normal.z;
 }
 
-void glTexCoord3x(GLfixed s, GLfixed t, GLfixed r) {
-	state.tu = s;
-	state.tv = t;
-	state.tw = r;
+void glTexCoord3x(GLfixed s, GLfixed t, GLfixed r)
+{
+	int ttop = state.stack_top[MODE_TEXTURE] - 1;
+	fixed *row = state.mstack[MODE_TEXTURE][ttop];
+
+	state.tu = fixed_mul(row[0], s) + fixed_mul(row[1], t) + fixed_mul(row[2], r); row += 4;
+	state.tv = fixed_mul(row[0], s) + fixed_mul(row[1], t) + fixed_mul(row[2], r); row += 4;
+	state.tw = fixed_mul(row[0], s) + fixed_mul(row[1], t) + fixed_mul(row[2], r);
 }
 
 

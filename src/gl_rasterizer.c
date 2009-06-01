@@ -1,6 +1,6 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006-2009 John Tsiombikas <nuclear@siggraph.org>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,13 +35,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define INTERP_Z
 /*#define INTERP_W*/
 #define INTERP_TEX
-#define INTERP_NORM
+/*#define INTERP_NORM*/
 #define ENABLE_BLENDING
 
-#define GET_R(p)	(((p) & RED_MASK32) >> RED_SHIFT32)
-#define GET_G(p)	(((p) & GREEN_MASK32) >> GREEN_SHIFT32)
-#define GET_B(p)	(((p) & BLUE_MASK32) >> BLUE_SHIFT32)
-#define GET_A(p)	(((p) & ALPHA_MASK32) >> ALPHA_SHIFT32)
+#define GET_R32(p)	(((p) & RED_MASK32) >> RED_SHIFT32)
+#define GET_G32(p)	(((p) & GREEN_MASK32) >> GREEN_SHIFT32)
+#define GET_B32(p)	(((p) & BLUE_MASK32) >> BLUE_SHIFT32)
+#define GET_A32(p)	(((p) & ALPHA_MASK32) >> ALPHA_SHIFT32)
+
+#define GET_R16(p)	((((p) & RED_MASK16) >> RED_SHIFT16) << 3)
+#define GET_G16(p)	((((p) & GREEN_MASK16) >> GREEN_SHIFT16) << 2)
+#define GET_B16(p)	((((p) & BLUE_MASK16) >> BLUE_SHIFT16) << 3)
+#define GET_A16(p)	255
 
 #define MIN(a, b)	((a) < (b) ? (a) : (b))
 #define MAX(a, b)	((a) > (b) ? (a) : (b))
@@ -63,7 +68,7 @@ static inline void scan_fixed(fixed x1, fixed y1, fixed x2, fixed y2, int elem_o
 static inline void fill_scanlines(int starty, int endy);
 
 #ifdef ENABLE_BLENDING
-static uint32_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, int fb_a);
+static uint16_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, int fb_a);
 #endif	/* ENABLE_BLENDING */
 
 void gl_phong_shade(fixed nx, fixed ny, fixed nz, fixed vx, fixed vy, fixed vz, fixed *r, fixed *g, fixed *b, fixed *a);
@@ -112,11 +117,11 @@ void gl_draw_point(struct vertex *pt) {
 	int cx = fixed_int(pt->x);/*fixed_mul(pt->x, fixed_half));*/
 	int cy = fixed_int(pt->y);/*fixed_mul(pt->y, fixed_half));*/
 
-	int ia = CLAMP(fixed_int(fixed_mul(pt->a, fixed_255)), 0, 255);
+	/*int ia = CLAMP(fixed_int(fixed_mul(pt->a, fixed_255)), 0, 255);*/
 	int ir = CLAMP(fixed_int(fixed_mul(pt->r, fixed_255)), 0, 255);
 	int ig = CLAMP(fixed_int(fixed_mul(pt->g, fixed_255)), 0, 255);
 	int ib = CLAMP(fixed_int(fixed_mul(pt->b, fixed_255)), 0, 255);
-	uint32_t pcol = PACK_COLOR32(ia, ir, ig, ib);
+	uint16_t pcol = PACK_COLOR16(ir, ig, ib);
 	
 	/* TODO: implement smooth (circular) points
 	if(IS_ENABLED(GL_POINT_SMOOTH)) {
@@ -129,7 +134,7 @@ void gl_draw_point(struct vertex *pt) {
 	int y = cy - sz / 2;
 	int x = cx - sz / 2;
 	int offs = y * fb->x + x;
-	uint32_t *cptr = fb->color_buffer + offs;
+	uint16_t *cptr = fb->color_buffer + offs;
 	uint32_t *zptr = fb->depth_buffer + offs;
 
 	for(j=0; j<sz; j++) {
@@ -389,10 +394,22 @@ static inline void fill_scanlines(int starty, int endy) {
 	struct edge *right_ptr = right_edge + starty;
 	int *sptr = scanline_offset + starty;
 
+	if(state.front_face == GL_CCW) {
+		left_ptr = right_edge + starty;
+		right_ptr = left_edge + starty;
+	}
+
 	for(y=starty; y<endy; y++, left_ptr++, right_ptr++) {
-		uint32_t *cptr, *zptr;
+		uint16_t *cptr;
+		uint32_t *zptr;
 		int startx = left_ptr->x;
 		int endx = right_ptr->x;
+
+		if(startx > endx) {
+			if(state.s & (1 << GL_CULL_FACE)) {
+				return;
+			}
+		}
 
 		fixed dx = fixedi(endx - startx);
 		
@@ -505,11 +522,11 @@ static inline void fill_scanlines(int starty, int endy) {
 		
 		cptr = fb->color_buffer + *sptr + startx;
 		zptr = fb->depth_buffer + *sptr++ + startx;
-		
+
 		for(x=startx; x<endx; x++) {
-			if(x >= 0 && z > 0) {
+			if(x >= 0 && z > -fixedi(1)) {
 #ifdef INTERP_Z
-				uint32_t zval = (uint32_t)z;
+				uint32_t zval = (uint32_t)(z + fixedi(1));
 
 				if(!IS_ENABLED(GL_DEPTH_TEST) || zval < *zptr) {
 #endif
@@ -547,20 +564,21 @@ static inline void fill_scanlines(int starty, int endy) {
 						ty = fixed_int(fixed_mul(v, fixedi(tex->y))) & tex->ymask;
 
 						texel = tex->pixels[(ty << tex->xpow) + tx];
-						ir = (ir * GET_R(texel)) >> 8;
-						ig = (ig * GET_G(texel)) >> 8;
-						ib = (ib * GET_B(texel)) >> 8;
-						ia = (ia * GET_A(texel)) >> 8;
+						ir = (ir * GET_R32(texel)) >> 8;
+						ig = (ig * GET_G32(texel)) >> 8;
+						ib = (ib * GET_B32(texel)) >> 8;
+						ia = (ia * GET_A32(texel)) >> 8;
 					}
 #endif
 				
 #ifdef ENABLE_BLENDING
 					if(IS_ENABLED(GL_BLEND) && !(state.src_blend == GL_ONE && state.dst_blend == GL_ZERO)) {
-						*cptr = blend(ir, ig, ib, ia, GET_R(*cptr), GET_G(*cptr), GET_B(*cptr), GET_A(*cptr));
+						uint16_t col = *cptr;
+						*cptr = blend(ir, ig, ib, ia, GET_R16(col), GET_G16(col), GET_B16(col), GET_A16(col));
 					} else
 #endif
 					{
-						*cptr = PACK_COLOR32(ia, ir, ig, ib);
+						*cptr = PACK_COLOR16(ir, ig, ib);
 					}
 
 #ifdef INTERP_Z
@@ -610,7 +628,7 @@ void gl_draw_rect(int x1, int y1, int x2, int y2) {
 }
 
 #ifdef ENABLE_BLENDING
-static uint32_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, int fb_a) {
+static uint16_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, int fb_a) {
 	int i;
 	int sr, sg, sb, dr, dg, db;	/* source/dest factors */
 
@@ -620,7 +638,7 @@ static uint32_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, 
 		int *fb = i ? &db : &sb;
 	
 		switch(i ? state.dst_blend : state.src_blend) {
-		case GL_ONE: 
+		case GL_ONE:
 			*fr = *fg = *fb = 255;
 			break;
 		case GL_ZERO:
@@ -669,6 +687,6 @@ static uint32_t blend(int r, int g, int b, int a, int fb_r, int fb_g, int fb_b, 
 	g = CLAMP(g, 0, 255);
 	b = CLAMP(b, 0, 255);
 
-	return PACK_COLOR32(a, r, g, b);
+	return PACK_COLOR16(r, g, b);
 }
 #endif	/* ENABLE_BLENDING */

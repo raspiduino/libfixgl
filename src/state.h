@@ -1,6 +1,6 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006 - 2009 John Tsiombikas <nuclear@siggraph.org>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define GL_STATE_H_
 
 #ifndef LIBFIXGL_SOURCE
-#error "state.h should not included from user programs, just include gl.h"
+#error "state.h should not included by user programs, just include gl.h"
 #endif
 
 #include "gl_rasterizer.h"
@@ -68,6 +68,7 @@ struct state {
 	} tgen[4];
 
 	/* rendering state */
+	int front_face;
 	unsigned int prim;
 	struct frame_buffer fb;
 	fixed clear_r, clear_g, clear_b, clear_a;

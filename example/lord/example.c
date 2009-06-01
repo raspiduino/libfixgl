@@ -147,12 +147,11 @@ int main(int argc, char **argv) {
 
 int init(void) {
 	float lpos[] = {-500, 500, 500, 1.0};
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER
 #ifdef GP2X
-			| SDL_INIT_JOYSTICK);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK);
 	SDL_JoystickOpen(0);
 #else
-			);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
 #endif
 	if(!(fbsurf = SDL_SetVideoMode(xsz, ysz, 32, SDL_SWSURFACE))) {
 		fputs("SDL init failed\n", stderr);

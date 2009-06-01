@@ -1,6 +1,6 @@
 /*
 This file is part of libfixgl, a fixed point implementation of OpenGL
-Copyright (C) 2006, 2007 John Tsiombikas <nuclear@siggraph.org>
+Copyright (C) 2006-2009 John Tsiombikas <nuclear@siggraph.org>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "fixed_point.h"
 
 struct frame_buffer {
-	uint32_t *color_buffer;
+	uint16_t *color_buffer;
 	uint32_t *depth_buffer;
 	/*uint8_t *stencil_buffer;*/
 	int x, y;
