@@ -4,8 +4,8 @@ lib = ../../libGL.a
 
 SDL_CONFIG = sdl-config
 
-#dbg = -g
-opt = -O3 -ffast-math
+dbg = -g
+#opt = -O3 -ffast-math
 
 CC = gcc
 CFLAGS = -std=gnu89 -pedantic -Wall $(opt) $(dbg) -I../../src `$(SDL_CONFIG) --cflags` -I/usr/local/devkitPro/devkitGP2X/include/libpng12

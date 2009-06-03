@@ -2,8 +2,8 @@ src = $(wildcard src/*.c)
 obj = $(src:.c=.o)
 lib = libGL.a
 
-#dbg = -g
-opt = -O3 -ffast-math
+dbg = -g
+#opt = -O3 -ffast-math
 
 CC = gcc
 CFLAGS = -Wall $(dbg) $(opt) -DHAVE_INLINE

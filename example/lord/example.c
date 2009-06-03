@@ -6,6 +6,10 @@
 #include <SDL.h>
 #include "gl.h"
 
+#if defined(__APPLE__) && defined(__MACH__)
+#define __unix__	1
+#endif
+
 #if defined(__unix__) || defined(unix)
 #include <unistd.h>
 #else	/* win32 */
@@ -18,7 +22,7 @@ void update_gfx(void);
 void clean_up(void);
 void draw_cube(float sz);
 void parse_cmdline(int argc, char **argv);
-void *load_image(const char *fname, unsigned long *xsz, unsigned long *ysz);
+void *load_image(const char *fname, int *xsz, int *ysz);
 
 int xsz = 320;
 int ysz = 240;
@@ -153,7 +157,7 @@ int init(void) {
 #else
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
 #endif
-	if(!(fbsurf = SDL_SetVideoMode(xsz, ysz, 32, SDL_SWSURFACE))) {
+	if(!(fbsurf = SDL_SetVideoMode(xsz, ysz, 16, SDL_SWSURFACE))) {
 		fputs("SDL init failed\n", stderr);
 		return -1;
 	}
@@ -162,9 +166,6 @@ int init(void) {
 
 	fglCreateContext();
 	glViewport(0, 0, xsz, ysz);
-	
-	glClearColor(0.1, 0.1, 0.1, 0);
-	glClearDepth(1);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_LIGHTING);
@@ -180,8 +181,8 @@ int init(void) {
 	*/
 
 	if(img_fname) {
-		uint32_t *img;
-		unsigned long tx, ty;
+		void *img;
+		int tx, ty;
 		
 		if(!(img = load_image(img_fname, &tx, &ty))) {
 			fprintf(stderr, "failed to load %s\n", img_fname);
@@ -215,26 +216,29 @@ int init(void) {
 void update_gfx(void) {
 	static unsigned int frames;
 	int i, j;
-	uint32_t *pixels;
+	uint16_t *pixels;
 	float t = (float)(SDL_GetTicks() - start_time) / 20.0f;
 
 	assert(glGetError() == GL_NO_ERROR);
 
+	glClearColor(0.2, 0.2, 0.2, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glTranslatef(0, 0, -500);
 
-	if(auto_rot) {
+	/*if(auto_rot) {
 		if(model == 1) glRotatef(t, 1, 0, 0);
 		glRotatef(t, 0, 1, 0);
 	} else {
 		glRotateEulerf(xrot, yrot, zrot);
-	}
-	
+	}*/
 
+	/*
+	
 	if(model == 0) {
+		glFrontFace(GL_CW);
 		glBegin(GL_TRIANGLES);
 		for(i=0; i<MESH_NFACE; i++) {
 			for(j=0; j<3; j++) {
@@ -246,14 +250,32 @@ void update_gfx(void) {
 			}
 		}
 		glEnd();
+
+		glFrontFace(GL_CCW);
 	} else {
 		draw_cube(200);
 	}
+	*/
+
+	/*glBegin(GL_TRIANGLES);
+	glNormal3f(0, 0, 1);
+	glVertex3f(-1, 0, 0);
+	glVertex3f(1, 0, 0);
+	glVertex3f(0, 1, 0);
+	glEnd();*/
+
+	glBegin(GL_TRIANGLES);
+	glNormal3f(0, 0, 1);
+	glVertex3f(0, 100, 0);
+	glVertex3f(-100, -100, 0);
+	glVertex3f(100, -100, 0);
+	glEnd();
+
 
 	pixels = fglGetFrameBuffer();
 
 	SDL_LockSurface(fbsurf);
-	memcpy(fbsurf->pixels, pixels, xsz * ysz * 4);
+	memcpy(fbsurf->pixels, pixels, xsz * ysz * 2);
 	SDL_UnlockSurface(fbsurf);
 	
 	SDL_Flip(fbsurf);
@@ -275,74 +297,50 @@ void draw_cube(float sz) {
 	/* face +Z */
 	glNormal3f(0, 0, 1);
 	glColor3f(1, 0, 0);
-	glTexCoord2f(0, 0);
-	glVertex3f(sz, -sz, sz);
-	glTexCoord2f(1, 0);
-	glVertex3f(-sz, -sz, sz);
-	glTexCoord2f(1, 1);
-	glVertex3f(-sz, sz, sz);
-	glTexCoord2f(0, 1);
-	glVertex3f(sz, sz, sz);
+	glTexCoord2f(0, 1); glVertex3f(sz, sz, sz);
+	glTexCoord2f(1, 1); glVertex3f(-sz, sz, sz);
+	glTexCoord2f(1, 0); glVertex3f(-sz, -sz, sz);
+	glTexCoord2f(0, 0); glVertex3f(sz, -sz, sz);
 
 	/* face -X */
 	glNormal3f(-1, 0, 0);
 	glColor3f(1, 0, 0);
-	glTexCoord2f(0, 0);
-	glVertex3f(-sz, -sz, sz);
-	glTexCoord2f(1, 0);
-	glVertex3f(-sz, -sz, -sz);
-	glTexCoord2f(1, 1);
-	glVertex3f(-sz, sz, -sz);
-	glTexCoord2f(0, 1);
-	glVertex3f(-sz, sz, sz);
+	glTexCoord2f(0, 1); glVertex3f(-sz, sz, sz);
+	glTexCoord2f(1, 1); glVertex3f(-sz, sz, -sz);
+	glTexCoord2f(1, 0); glVertex3f(-sz, -sz, -sz);
+	glTexCoord2f(0, 0); glVertex3f(-sz, -sz, sz);
 
 	/* face -Z */
 	glNormal3f(0, 0, -1);
 	glColor3f(1, 0, 0);
-	glTexCoord2f(0, 1);
-	glVertex3f(-sz, sz, -sz);
-	glTexCoord2f(0, 0);
-	glVertex3f(-sz, -sz, -sz);
-	glTexCoord2f(1, 0);
-	glVertex3f(sz, -sz, -sz);
-	glTexCoord2f(1, 1);
-	glVertex3f(sz, sz, -sz);
+	glTexCoord2f(1, 1); glVertex3f(sz, sz, -sz);
+	glTexCoord2f(1, 0); glVertex3f(sz, -sz, -sz);
+	glTexCoord2f(0, 0); glVertex3f(-sz, -sz, -sz);
+	glTexCoord2f(0, 1); glVertex3f(-sz, sz, -sz);
 
 	/* face +X */
 	glNormal3f(1, 0, 0);
 	glColor3f(1, 0, 0);
-	glTexCoord2f(0, 1);
-	glVertex3f(sz, sz, -sz);
-	glTexCoord2f(0, 0);
-	glVertex3f(sz, -sz, -sz);
-	glTexCoord2f(1, 0);
-	glVertex3f(sz, -sz, sz);
-	glTexCoord2f(1, 1);
-	glVertex3f(sz, sz, sz);
+	glTexCoord2f(1, 1); glVertex3f(sz, sz, sz);
+	glTexCoord2f(1, 0); glVertex3f(sz, -sz, sz);
+	glTexCoord2f(0, 0); glVertex3f(sz, -sz, -sz);
+	glTexCoord2f(0, 1); glVertex3f(sz, sz, -sz);
 
 	/* face +Y */
 	glNormal3f(0, 1, 0);
 	glColor3f(1, 0, 0);
-	glTexCoord2f(1, 0);
-	glVertex3f(sz, sz, sz);
-	glTexCoord2f(0, 0);
-	glVertex3f(-sz, sz, sz);
-	glTexCoord2f(0, 1);
-	glVertex3f(-sz, sz, -sz);
-	glTexCoord2f(1, 1);
-	glVertex3f(sz, sz, -sz);
+	glTexCoord2f(1, 1); glVertex3f(sz, sz, -sz);
+	glTexCoord2f(0, 1); glVertex3f(-sz, sz, -sz);
+	glTexCoord2f(0, 0); glVertex3f(-sz, sz, sz);
+	glTexCoord2f(1, 0); glVertex3f(sz, sz, sz);
 
 	/* face -Y */
 	glNormal3f(0, -1, 0);
 	glColor3f(1, 0, 0);
-	glTexCoord2f(1, 0);
-	glVertex3f(-sz, -sz, -sz);
-	glTexCoord2f(1, 1);
-	glVertex3f(-sz, -sz, sz);
-	glTexCoord2f(0, 1);
-	glVertex3f(sz, -sz, sz);
-	glTexCoord2f(0, 0);
-	glVertex3f(sz, -sz, -sz);
+	glTexCoord2f(0, 0); glVertex3f(sz, -sz, -sz);
+	glTexCoord2f(0, 1); glVertex3f(sz, -sz, sz);
+	glTexCoord2f(1, 1); glVertex3f(-sz, -sz, sz);
+	glTexCoord2f(1, 0); glVertex3f(-sz, -sz, -sz);
 
 	glEnd();
 }

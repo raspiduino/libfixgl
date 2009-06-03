@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "state.h"
 #include "shade.h"
 #include "types.h"
+#include "clip.h"
 
 static fixed texgen(int coord, struct vertex *v);
 
@@ -151,38 +152,61 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z)
 		return;
 	}
 
-	/* divide with W */
-	if(v->w) {
-		/*fixed z = v->z;*/
-		v->x = fixed_div(v->x, v->w);
-		v->y = fixed_div(v->y, v->w);
-		v->z = fixed_div(v->z, v->w);
-		/*v->w = -z;*/
-	}
-
-	/* viewport transformation */
-	half_width = fixed_mul(fixedi(state.fb.x), fixed_half);
-	half_height = fixed_mul(fixedi(state.fb.y), fixed_half);
-	v->x = fixed_mul(half_width, v->x + fixed_one);
-	v->y = fixed_mul(half_height, fixed_one - v->y);
-
 	if(++state.cur_vert == state.prim_elem) {
 		state.cur_vert = 0;
 	}
 
 	if(!state.cur_vert) {
+		half_width = fixed_mul(fixedi(state.fb.x), fixed_half);
+		half_height = fixed_mul(fixedi(state.fb.y), fixed_half);
+
 		switch(state.prim) {
 		case GL_POINTS:
-			gl_draw_point(state.v);
+			if(v->w) {
+				v->x = fixed_div(v->x, v->w);
+				v->y = fixed_div(v->y, v->w);
+				v->z = fixed_div(v->z, v->w);
+			}
+			v->x = fixed_mul(half_width, v->x + fixed_one);
+			v->y = fixed_mul(half_height, fixed_one - v->y);
+			gl_draw_point(v);
 			break;
 
 		case GL_LINES:
-			gl_draw_line(state.v);
+			{
+				int i;
+
+				for(i=0; i<2; i++) {
+					struct vertex *v = state.v + i;
+					if(v->w) {
+						v->x = fixed_div(v->x, v->w);
+						v->y = fixed_div(v->y, v->w);
+						v->z = fixed_div(v->z, v->w);
+					}
+					v->x = fixed_mul(half_width, v->x + fixed_one);
+					v->y = fixed_mul(half_height, fixed_one - v->y);
+				}
+				gl_draw_line(state.v);
+			}
 			break;
 
 		case GL_TRIANGLES:
 		case GL_QUADS:
-			gl_draw_polygon(state.v, state.prim_elem);
+			{
+				int i, vnum = clip_polygon(state.v, state.prim_elem);
+
+				for(i=0; i<vnum; i++) {
+					struct vertex *v = state.v + i;
+					if(v->w) {
+						v->x = fixed_div(v->x, v->w);
+						v->y = fixed_div(v->y, v->w);
+						v->z = fixed_div(v->z, v->w);
+					}
+					v->x = fixed_mul(half_width, v->x + fixed_one);
+					v->y = fixed_mul(half_height, fixed_one - v->y);
+				}
+				gl_draw_polygon(state.v, vnum);
+			}
 			break;
 
 		default:

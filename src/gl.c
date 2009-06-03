@@ -64,6 +64,9 @@ void fglCreateContext(void) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+	glClearColorx(0, 0, 0, 0);
+	glClearDepthx(fixedi(1));
+
 	memset(state.tex, 0, MAX_TEXTURES * sizeof(void*));
 	state.btex = 0;
 	
@@ -161,7 +164,7 @@ void glClear(GLbitfield what) {
 	int i, sz;
 	uint16_t *cptr;
 	uint32_t *zptr, col, zval;
-	fixed r, g, b;
+	int r, g, b;
 	GLbitfield all;
 
 	all =	GL_COLOR_BUFFER_BIT |
