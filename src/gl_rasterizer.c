@@ -524,9 +524,11 @@ static inline void fill_scanlines(int starty, int endy) {
 		zptr = fb->depth_buffer + *sptr++ + startx;
 
 		for(x=startx; x<endx; x++) {
-			if(x >= 0 && z > -fixedi(1)) {
+			//if(x >= 0 && z > -fixedi(1)) {
+			if(x >= 0 && z > 0) {
 #ifdef INTERP_Z
-				uint32_t zval = (uint32_t)(z + fixedi(1));
+				//uint32_t zval = (uint32_t)(z + fixedi(1));
+				uint32_t zval = (uint32_t)z;
 
 				if(!IS_ENABLED(GL_DEPTH_TEST) || zval < *zptr) {
 #endif

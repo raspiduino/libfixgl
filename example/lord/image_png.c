@@ -30,9 +30,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "color_bits.h"
 
 int check_png(FILE *fp);
-void *load_png(FILE *fp, unsigned long *xsz, unsigned long *ysz);
+void *load_png(FILE *fp, int *xsz, int *ysz);
 
-void *load_image(const char *fname, unsigned long *xsz, unsigned long *ysz) {
+void *load_image(const char *fname, int *xsz, int *ysz) {
 	FILE *file;
 
 	if(!(file = fopen(fname, "rb"))) {
@@ -58,12 +58,13 @@ int check_png(FILE *fp) {
 	return png_sig_cmp(sig, 0, FILE_SIG_BYTES) == 0 ? 1 : 0;
 }
 
-void *load_png(FILE *fp, unsigned long *xsz, unsigned long *ysz) {
+void *load_png(FILE *fp, int *xsz, int *ysz) {
 	png_struct *png_ptr;
 	png_info *info_ptr;
 	int i;
 	uint32_t **lineptr, *pixels;
 	int channel_bits, color_type, ilace_type, compression, filtering;
+	unsigned long img_x, img_y;
 	
 	if(!(png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0))) {
 		fclose(fp);
@@ -87,7 +88,9 @@ void *load_png(FILE *fp, unsigned long *xsz, unsigned long *ysz) {
 	
 	png_read_png(png_ptr, info_ptr, PNG_TRANSFORM_BGR, 0);
 		
-	png_get_IHDR(png_ptr, info_ptr, xsz, ysz, &channel_bits, &color_type, &ilace_type, &compression, &filtering);
+	png_get_IHDR(png_ptr, info_ptr, &img_x, &img_y, &channel_bits, &color_type, &ilace_type, &compression, &filtering);
+	*xsz = img_x;
+	*ysz = img_y;
 	pixels = malloc(*xsz * *ysz * sizeof(uint32_t));
 	
 	lineptr = (uint32_t**)png_get_rows(png_ptr, info_ptr);
@@ -128,7 +131,7 @@ void *load_png(FILE *fp, unsigned long *xsz, unsigned long *ysz) {
 }
 
 /* TODO: implement this */
-int save_png(FILE *fp, void *pixels, unsigned long xsz, unsigned long ysz) {
+int save_png(FILE *fp, void *pixels, int xsz, int ysz) {
 	fprintf(stderr, "saving png files is not implemented yet");
 	return -1;
 }
