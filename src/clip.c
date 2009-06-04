@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <string.h>
+#include <math.h>
 #include <alloca.h>
 #include "clip.h"
 #include "vmath.h"
@@ -24,20 +25,28 @@ struct plane {
 	fixed a, b, c, d;
 };
 
+typedef struct vec3f {
+	float x, y, z;
+} vec3f;
+
 static int clip(struct vertex *outv, struct vertex *inv, int count, int p);
-static int intersect(vec3 orig, vec3 dir, vec3 pnorm, fixed pdist, fixed *res);
+/*static int intersect(vec3 orig, vec3 dir, vec3 pnorm, fixed pdist, fixed *res);*/
+static int intersect(vec3f orig, vec3f dir, int p, float *res);
+static int inside(struct vec3 pt, int p);
 static void interp_vertex(struct vertex *res, struct vertex *v1, struct vertex *v2, fixed t);
 
 
 #define MAX_CLIP_PLANES		12
+#define USER_CLIP_BASE		6
+
 static struct plane cplane[MAX_CLIP_PLANES] = {
-	{0, 0, -fixedi(1), fixedi(1)},	/* near */
+	{0, 0, -fixedi(1), -fixedi(1)},	/* near */
 	{0, 0, fixedi(1), -fixedi(1)},	/* far */
 
-	{-fixedi(1), 0, 0, fixedi(0)},	/* right */
+	{-fixedi(1), 0, 0, -fixedf(1)},	/* right */
 
 	{fixedi(1), 0, 0, -fixedi(1)},	/* left */
-	{0, -fixedi(1), 0, fixedi(1)},	/* top */
+	{0, -fixedi(1), 0, -fixedi(1)},	/* top */
 	{0, fixedi(1), 0, -fixedi(1)},	/* bottom */
 
 	/* user clipping planes */
@@ -48,17 +57,85 @@ static struct plane cplane[MAX_CLIP_PLANES] = {
 	{0, 0, 0, 0},
 	{0, 0, 0, 0}
 };
+static vec3 plane_pos[MAX_CLIP_PLANES] = {
+	{0, 0, fixedi(1)},
+	{0, 0, -fixedi(1)},
+	{fixedf(0.1), 0, 0},
+	{-fixedi(1), 0, 0},
+	{0, fixedi(1), 0},
+	{0, -fixedi(1), 0},
+
+	{0, 0, 0},
+	{0, 0, 0},
+	{0, 0, 0},
+	{0, 0, 0},
+	{0, 0, 0},
+	{0, 0, 0}
+};
 static int cplane_enable[MAX_CLIP_PLANES] = {
 	1, 1, 1, 1, 1, 1,
 	0, 0, 0, 0, 0, 0
 };
 
+int enable_clip_plane(int idx)
+{
+	if(idx < USER_CLIP_BASE || idx >= MAX_CLIP_PLANES) {
+		return -1;
+	}
+	idx += USER_CLIP_BASE;
 
+	cplane_enable[idx] = 1;
+	return 0;
+}
+
+int disable_clip_plane(int idx)
+{
+	if(idx < USER_CLIP_BASE || idx >= MAX_CLIP_PLANES) {
+		return -1;
+	}
+	idx += USER_CLIP_BASE;
+
+	cplane_enable[idx] = 0;
+	return 0;
+}
+
+int set_clip_plane(int idx, fixed a, fixed b, fixed c, fixed d)
+{
+	if(idx < USER_CLIP_BASE || idx >= MAX_CLIP_PLANES) {
+		return -1;
+	}
+	idx += USER_CLIP_BASE;
+
+	cplane[idx].a = a;
+	cplane[idx].b = b;
+	cplane[idx].c = c;
+	cplane[idx].d = d;
+
+	plane_pos[idx].x = fixed_mul(a, d);
+	plane_pos[idx].y = fixed_mul(b, d);
+	plane_pos[idx].z = fixed_mul(c, d);
+	return 0;
+}
+
+int get_clip_plane(int idx, fixed *a, fixed *b, fixed *c, fixed *d)
+{
+	if(idx < USER_CLIP_BASE || idx >= MAX_CLIP_PLANES) {
+		return -1;
+	}
+	idx += USER_CLIP_BASE;
+
+	*a = cplane[idx].a;
+	*b = cplane[idx].b;
+	*c = cplane[idx].c;
+	*d = cplane[idx].d;
+	return 0;
+}
 
 int clip_polygon(struct vertex *vert, int count)
 {
 	int i, vnum, idx = 1;
 	struct vertex *vbuf[2];
+	fixed w = vert->w;
    
 	vbuf[0] = alloca(2 * count * sizeof *vbuf[0]);
 	vbuf[1] = alloca(2 * count * sizeof *vbuf[1]);
@@ -97,19 +174,42 @@ static int clip(struct vertex *outv, struct vertex *inv, int count, int p)
 
 		vert2 = inv + i;
 
-		v1.x = vert1->x; v1.y = vert1->y; v1.z = vert1->z;
-		v2.x = vert2->x; v2.y = vert2->y; v2.z = vert2->z;
+		v1.x = vert1->x; v1.y = vert1->y; v1.z = vert1->z; v1.w = vert1->w;
+		v2.x = vert2->x; v2.y = vert2->y; v2.z = vert2->z; v2.w = vert2->w;
 
-		if(vm_dot(v2, pnorm) >= 0) {
-			if(vm_dot(v1, pnorm) < 0) {
-				intersect(v1, vm_sub(v2, v1), pnorm, plane->d, &t);
-				interp_vertex(outv + ovcount++, vert1, vert2, t);
+		if(inside(v2, p)) {
+			if(!inside(v1, p)) {
+				float t = 0;
+				vec3f v1f, dirf;
+
+				v1f.x = fixed_float(v1.x); v1f.y = fixed_float(v1.y); v1f.z = fixed_float(v1.z);
+				dirf.x = fixed_float(v2.x) - v1f.x; dirf.y = fixed_float(v2.y) - v1f.y; dirf.z = fixed_float(v2.z) - v1f.z;
+
+				if(intersect(v1f, dirf, p, &t)) {
+					printf("t: %f\n", t);
+					interp_vertex(outv + ovcount++, vert1, vert2, fixedf(t));
+				} else {
+					printf("should...\n");
+				}
 			}
-			outv[ovcount++] = *vert1;
+			outv[ovcount++] = *vert2;
 		} else {
-			if(vm_dot(v1, pnorm) >= 0) {
-				intersect(v1, vm_sub(v2, v1), pnorm, plane->d, &t);
-				interp_vertex(outv + ovcount++, vert1, vert2, t);
+			if(inside(v1, p)) {
+				float t = 0;
+				vec3f v1f, dirf;
+
+				v1f.x = fixed_float(v1.x); v1f.y = fixed_float(v1.y); v1f.z = fixed_float(v1.z);
+				dirf.x = fixed_float(v2.x) - v1f.x; dirf.y = fixed_float(v2.y) - v1f.y; dirf.z = fixed_float(v2.z) - v1f.z;
+
+				if(intersect(v1f, dirf, p, &t)) {
+					printf("t: %f\n", t);
+					interp_vertex(outv + ovcount++, vert2, vert1, fixedf(t));
+				} else {
+					printf("should...\n");
+				}
+
+				/*intersect(v1, vm_sub(v2, v1), pnorm, plane->d, &t);
+				interp_vertex(outv + ovcount++, vert1, vert2, t);*/
 			}
 		}
 		vert1 = vert2;
@@ -118,6 +218,7 @@ static int clip(struct vertex *outv, struct vertex *inv, int count, int p)
 	return ovcount;
 }
 
+#if 0
 static int intersect(vec3 orig, vec3 dir, vec3 pnorm, fixed pdist, fixed *res)
 {
 	vec3 ppos, vo_vec;
@@ -139,6 +240,48 @@ static int intersect(vec3 orig, vec3 dir, vec3 pnorm, fixed pdist, fixed *res)
 
 	*res = t;
 	return 1;
+}
+#endif
+
+static int intersect(vec3f orig, vec3f dir, int p, float *res)
+{
+	vec3f vo_vec, pnorm;
+	float ndotdir, t;
+
+	pnorm.x = fixed_float(cplane[p].a);
+	pnorm.y = fixed_float(cplane[p].b);
+	pnorm.z = fixed_float(cplane[p].c);
+
+	ndotdir = dir.x * pnorm.x + dir.y * pnorm.y + dir.z * pnorm.z;
+	if(fabs(ndotdir) < 0.00001) {
+		return 0;
+	}
+
+	vo_vec.x = fixed_float(plane_pos[p].x) - orig.x;
+	vo_vec.y = fixed_float(plane_pos[p].y) - orig.y;
+	vo_vec.z = fixed_float(plane_pos[p].z) - orig.z;
+
+	t = (pnorm.x * vo_vec.x + pnorm.y * vo_vec.y + pnorm.z * vo_vec.z) / ndotdir;
+	if(t <= 0.00001 || t > 1.0) {
+		return 0;
+	}
+
+	*res = t;
+	return 1;
+}
+
+static int inside(struct vec3 pt, int p)
+{
+	fixed dot;
+	struct vec3 ptov = vm_sub(pt, plane_pos[p]);
+	struct vec3 pnorm;
+
+	pnorm.x = cplane[p].a;
+	pnorm.y = cplane[p].b;
+	pnorm.z = cplane[p].c;
+
+	dot = vm_dot(ptov, pnorm);
+	return dot >= 0 ? 1 : 0;
 }
 
 static void interp_vertex(struct vertex *res, struct vertex *v1, struct vertex *v2, fixed t)

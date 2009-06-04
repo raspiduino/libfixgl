@@ -148,6 +148,8 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z)
 	v->z = fixed_mul(row[0], x) + fixed_mul(row[1], y) + fixed_mul(row[2], z) + row[3]; row += 4;
 	v->w = fixed_mul(row[0], x) + fixed_mul(row[1], y) + fixed_mul(row[2], z) + row[3];
 
+	printf("--- %.3f %.3f %.3f (%.3f)\n", fixed_float(v->x), fixed_float(v->y), fixed_float(v->z), fixed_float(v->w));
+
 	if(state.prim == GL_POINTS && v->z < 0) {
 		return;
 	}
@@ -162,11 +164,6 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z)
 
 		switch(state.prim) {
 		case GL_POINTS:
-			if(v->w) {
-				v->x = fixed_div(v->x, v->w);
-				v->y = fixed_div(v->y, v->w);
-				v->z = fixed_div(v->z, v->w);
-			}
 			v->x = fixed_mul(half_width, v->x + fixed_one);
 			v->y = fixed_mul(half_height, fixed_one - v->y);
 			gl_draw_point(v);
@@ -193,14 +190,19 @@ void glVertex3x(GLfixed x, GLfixed y, GLfixed z)
 		case GL_TRIANGLES:
 		case GL_QUADS:
 			{
-				int i, vnum = clip_polygon(state.v, state.prim_elem);
+				int i;
+				int vnum = clip_polygon(state.v, state.prim_elem);
 
 				for(i=0; i<vnum; i++) {
 					struct vertex *v = state.v + i;
+
+					printf("+++ %.3f %.3f %.3f\n", fixed_float(v->x), fixed_float(v->y), fixed_float(v->z));
+
 					if(v->w) {
 						v->x = fixed_div(v->x, v->w);
 						v->y = fixed_div(v->y, v->w);
 						v->z = fixed_div(v->z, v->w);
+						printf(">>> %.3f %.3f\n", fixed_float(v->x), fixed_float(v->y));
 					}
 					v->x = fixed_mul(half_width, v->x + fixed_one);
 					v->y = fixed_mul(half_height, fixed_one - v->y);
