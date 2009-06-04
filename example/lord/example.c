@@ -264,6 +264,7 @@ void update_gfx(void) {
 	glVertex3f(0, 1, 0);
 	glEnd();*/
 
+	printf("--------\n");
 	glBegin(GL_TRIANGLES);
 	glNormal3f(0, 0, 1);
 	glVertex3f(0, 100, 0);
@@ -283,6 +284,8 @@ void update_gfx(void) {
 	if(frames++ == 20) {
 		fprintf(stderr, "20 frames: %u msec\n", SDL_GetTicks() - start_time);
 	}
+
+	sleep(2);
 }
 
 void clean_up(void) {
